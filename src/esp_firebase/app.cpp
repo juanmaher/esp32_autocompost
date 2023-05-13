@@ -22,8 +22,8 @@
 #define HTTP_TAG "HTTP_CLIENT"
 #define FIREBASE_APP_TAG "FirebaseApp"
 
-extern const char cert_start[] asm("_binary_gtsr1_pem_start");
-extern const char cert_end[]   asm("_binary_gtsr1_pem_end");
+//extern const char cert_start[] asm("_binary_gtsr1_pem_start");
+//extern const char cert_end[]   asm("_binary_gtsr1_pem_end");
 
 
 
@@ -218,7 +218,7 @@ esp_err_t FirebaseApp::getAuthToken()
 // }
 
 FirebaseApp::FirebaseApp(const char* api_key)
-    : https_certificate(cert_start), api_key(api_key)
+    : api_key(api_key)
 {
     
     FirebaseApp::local_response_buffer = new char[HTTP_RECV_BUFFER_SIZE];
