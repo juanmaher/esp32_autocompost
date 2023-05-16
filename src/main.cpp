@@ -150,14 +150,14 @@ static void smartconfig_example_task(void * parm)
 }
 
 void event_callback_function_firebase() {
-    std::cout << "YA ME CONECTE";
+    ESP_LOGI(TAG, "YA ME CONECTE");
     // Config and Authentication
     user_account_t account = {USER_EMAIL, USER_PASSWORD};
-
+    ESP_LOGI(TAG, "Linea 156");
     FirebaseApp app = FirebaseApp(API_KEY);
-
+    ESP_LOGI(TAG, "Linea 158");
     app.loginUserAccount(account);
-
+    ESP_LOGI(TAG, "Linea 160");
     RTDB db = RTDB(&app, DATABASE_URL);
 
     

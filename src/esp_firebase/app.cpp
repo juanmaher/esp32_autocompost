@@ -22,7 +22,7 @@
 #define HTTP_TAG "HTTP_CLIENT"
 #define FIREBASE_APP_TAG "FirebaseApp"
 
-extern const char cert_start[] asm("_binary_gtsr1_pem_start");
+extern const char cert_start[] asm("_binary_gtsr1a_pem_start");
 //extern const char cert_end[]   asm("_binary_gtsr1_pem_end");
 
 
@@ -69,13 +69,18 @@ namespace ESPFirebase {
 // TODO: protect this function from breaking 
 void FirebaseApp::firebaseClientInit(void)
 {   
+    ESP_LOGI(FIREBASE_APP_TAG, "%s %d", __func__, __LINE__);
     esp_http_client_config_t config;
     config.url = "https://google.com";    // you have to set this as https link of some sort so that it can init properly, you cant leave it empty
     config.event_handler = http_event_handler;
+    ESP_LOGI(FIREBASE_APP_TAG, "%s %d", __func__, __LINE__);
     config.cert_pem = FirebaseApp::https_certificate;
+    ESP_LOGI(FIREBASE_APP_TAG, "%s %d", __func__, __LINE__);
     config.user_data = FirebaseApp::local_response_buffer;
+    ESP_LOGI(FIREBASE_APP_TAG, "%s %d", __func__, __LINE__);
     config.buffer_size_tx = 4096;
     config.buffer_size = HTTP_RECV_BUFFER_SIZE;
+    ESP_LOGI(FIREBASE_APP_TAG, "%s %d", __func__, __LINE__);
     FirebaseApp::client = esp_http_client_init(&config);
     ESP_LOGD(FIREBASE_APP_TAG, "HTTP Client Initialized");
 
@@ -220,7 +225,7 @@ esp_err_t FirebaseApp::getAuthToken()
 FirebaseApp::FirebaseApp(const char* api_key)
     : https_certificate(cert_start), api_key(api_key)
 {
-    
+    ESP_LOGI(FIREBASE_APP_TAG, "Entro al constructor");
     FirebaseApp::local_response_buffer = new char[HTTP_RECV_BUFFER_SIZE];
     FirebaseApp::register_url += FirebaseApp::api_key; 
     FirebaseApp::login_url += FirebaseApp::api_key;
