@@ -5,7 +5,7 @@
 // Read readme.md to properly configure api key and authentication
 
 // create a new api key and add it here 
-#define API_KEY "API_KEY"
+#define API_KEY "AIzaSyCT7TZd0hD-1hMcg-cr5_WN-3Wy5nSxnpE"
 // Copy your firebase real time database link here 
 #define DATABASE_URL "https://autocompost-5e61a-default-rtdb.firebaseio.com/"  
 
