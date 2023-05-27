@@ -32,6 +32,10 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
+#include <Preferences.h>
+
+Preferences preferences;
+
 using namespace ESPFirebase;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -233,12 +237,18 @@ static void firebase_task(void* arg) {
     }
 }
 
-extern "C" void app_main(void)
+void app_main(void)
 {
-    //wifiInit(SSID, PASSWORD);  // blocking until it connects
+    preferences.begin("credentials", false);
 
-    ESP_ERROR_CHECK( nvs_flash_init() );
-    initialise_wifi();
+    bool data_available = preferences.getBool("data_available");
+    String ssid = preferences.getString("SSID");
+    String password = preferences.getString("PASSWORD");
     
+    if(data_available) {
+        wifiInit(ssid, password);
+    } else {
+        initialise_wifi();
+    }
 }
 

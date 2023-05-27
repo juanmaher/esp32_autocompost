@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Preferences.h"
+#include "preferences.h"
 
 #include "nvs.h"
 #include "nvs_flash.h"
