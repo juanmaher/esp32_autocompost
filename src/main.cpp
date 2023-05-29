@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <cstdint>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -14,8 +15,8 @@
 #include <value.h>
 #include <json.h>
 
-#include "esp_firebase/app.h"
-#include "esp_firebase/rtdb.h"
+#include <app.h>
+#include <rtdb.h>
 
 #include "firebase_config.h"
 
@@ -45,13 +46,21 @@ ESP_EVENT_DECLARE_BASE(FIREBASE_EVENT);
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
    to the AP with an IP? */
-static const int CONNECTED_BIT = BIT0;
-static const int ESPTOUCH_DONE_BIT = BIT1;
+static const int WIFI_CONNECTED_BIT = BIT0;
+static const int WIFI_FAIL_BIT = BIT1;
+
 static const char *TAG = "smartconfig_example";
 bool isConnected = false;
 
+struct wifi_credentials{
+    bool data_available = false;
+    uint8_t ssid[32] = { 0 };
+    uint8_t password[64] = { 0 };
+} wifi_credentials_t;
+
 static void firebase_task(void * parm);
 static void smartconfig_example_task(void * parm);
+static int set_credentials(void);
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -60,9 +69,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
-        xEventGroupClearBits(s_wifi_event_group, CONNECTED_BIT);
+        xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
         ESP_LOGI(TAG, "Scan done");
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
@@ -86,6 +95,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
         memcpy(ssid, evt->ssid, sizeof(evt->ssid));
         memcpy(password, evt->password, sizeof(evt->password));
+
+        memcpy(wifi_credentials_t.ssid, evt->ssid, sizeof(evt->ssid));
+        memcpy(wifi_credentials_t.password, evt->password, sizeof(evt->password));
+
         ESP_LOGI(TAG, "SSID:%s", ssid);
         ESP_LOGI(TAG, "PASSWORD:%s", password);
         if (evt->type == SC_TYPE_ESPTOUCH_V2) {
@@ -101,7 +114,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
         esp_wifi_connect();
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+        xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
     }
 }
 
@@ -125,6 +138,65 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK( esp_wifi_start() );
 }
 
+static esp_err_t initialise_wifi(const uint8_t * ssid, const uint8_t * password)
+{
+    esp_err_t ret = ESP_OK; 
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    s_wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    assert(sta_netif);
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+
+    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL) );
+
+    wifi_config_t wifi_config;
+    memcpy(wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    memcpy(wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
+   
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    wifi_config.sta.pmf_cfg = {true, false};
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK( esp_wifi_start() );
+
+    ESP_LOGI(TAG, "wifi_init_sta finished.");
+
+    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or
+    * connection failed for the maximum number of re-tries (WIFI_FAIL_BIT). The
+    * bits are set by event_handler() (see above) */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+
+    /* xEventGroupWaitBits() returns the bits before the call returned, hence we
+    * can test which event actually happened. */
+    if (bits & WIFI_CONNECTED_BIT) 
+    {
+        ESP_LOGW(TAG, "connected to ap SSID: %s || password: %s", ssid, password);
+        goto ret;
+    } 
+    else if (bits & WIFI_FAIL_BIT) 
+    {
+        ESP_LOGE(TAG, "Failed to connect to SSID: %s || password: %s", ssid, password);
+    } 
+    else 
+    {
+        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+    }
+
+    return ESP_FAIL;
+
+ret:
+    /* The event will not be processed after unregister */
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, NULL));
+    vEventGroupDelete(s_wifi_event_group);
+    return ret;
+}
+
 static void smartconfig_example_task(void * parm)
 {
     EventBits_t uxBits;
@@ -138,16 +210,17 @@ static void smartconfig_example_task(void * parm)
     strcpy(firebase_event.message, "Evento de Firebase");
 
     while (1) {
-        uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
-        if(uxBits & CONNECTED_BIT) {
+        uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, true, false, portMAX_DELAY);
+        if(uxBits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
             // Disparar el evento FIREBASE_EVENT con un identificador específico
             //esp_event_post(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &firebase_event, sizeof(firebase_event_data_t), portMAX_DELAY);
             //event_callback_function_firebase();
             isConnected = true;
-            xTaskCreate(firebase_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
+            set_credentials();
+            xTaskCreate(firebase_task, "firebase_task", 4096, NULL, 3, NULL);
         }
-        if(uxBits & ESPTOUCH_DONE_BIT) {
+        if(uxBits & WIFI_FAIL_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
             esp_smartconfig_stop();
             vTaskDelete(NULL);
@@ -155,7 +228,8 @@ static void smartconfig_example_task(void * parm)
     }
 }
 
-static void firebase_task(void* arg) {
+static void firebase_task(void* arg)
+{
 
     while(1) {
         if(isConnected) {
@@ -237,16 +311,64 @@ static void firebase_task(void* arg) {
     }
 }
 
-void app_main(void)
+static int find_credentials(void)
 {
+    int ret = 0;
+    char * ssid;
+    char * password;
+
     preferences.begin("credentials", false);
 
-    bool data_available = preferences.getBool("data_available");
-    String ssid = preferences.getString("SSID");
-    String password = preferences.getString("PASSWORD");
-    
-    if(data_available) {
-        wifiInit(ssid, password);
+    wifi_credentials_t.data_available = preferences.getBool("data_available");
+    ssid = preferences.getString("SSID");
+    password = preferences.getString("PASSWORD");
+
+    memcpy(wifi_credentials_t.ssid, ssid, sizeof(wifi_credentials_t.ssid));
+    memcpy(wifi_credentials_t.password, password, sizeof(wifi_credentials_t.password));
+
+    if(wifi_credentials_t.data_available) {
+        ESP_LOGI(TAG, "Credentials found");
+
+        if(wifi_credentials_t.ssid == NULL)
+            return ret;
+        ESP_LOGI(TAG, "SSID: %s", wifi_credentials_t.ssid);
+
+        if(wifi_credentials_t.password != NULL) 
+            return ret;
+        ESP_LOGI(TAG, "Password: %s", wifi_credentials_t.password);
+
+        ret = 1;
+    } else {
+        ESP_LOGI(TAG, "Credentials not found");
+    }
+
+    preferences.end();
+    return ret;
+}
+
+static int set_credentials(void) 
+{
+    int ret = 0;
+    preferences.begin("credentials", false);
+
+    ESP_LOGI(TAG, "SSID: %s", wifi_credentials_t.ssid);
+    ESP_LOGI(TAG, "Password: %s", wifi_credentials_t.password);
+
+    preferences.putString("SSID",  reinterpret_cast<char*>(wifi_credentials_t.ssid));
+    preferences.putString("PASSWORD",  reinterpret_cast<char*>(wifi_credentials_t.password));
+    preferences.putBool("data_available", true);
+
+    preferences.end();
+
+    return ret;
+}
+
+extern "C" void app_main(void)
+{
+    ESP_ERROR_CHECK( nvs_flash_init() );
+
+    if(find_credentials()) {
+        initialise_wifi(wifi_credentials_t.ssid, wifi_credentials_t.password);
     } else {
         initialise_wifi();
     }
