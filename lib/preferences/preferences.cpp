@@ -342,9 +342,11 @@ int8_t Preferences::getChar(const char* key, const int8_t defaultValue){
 uint8_t Preferences::getUChar(const char* key, const uint8_t defaultValue){
     uint8_t value = defaultValue;
     if(!_started || !key){
+        ESP_LOGI(TAG, "%s", value);
         return value;
     }
     esp_err_t err = nvs_get_u8(_handle, key, &value);
+    ESP_LOGI(TAG, "%s", value);
     if(err){
         ESP_LOGV(TAG, "nvs_get_u8 fail: %s %s", key, nvs_error(err));
     }

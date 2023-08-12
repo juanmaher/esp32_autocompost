@@ -316,12 +316,21 @@ static int find_credentials(void)
     int ret = 0;
     char * ssid;
     char * password;
+    bool data_available;
 
-    preferences.begin("credentials", false);
+    ESP_LOGI(TAG, "find_credentials");
+    if(!preferences.begin("credentials")) {
+        ESP_LOGI(TAG, "Failed to open preferences");
+        return EXIT_FAILURE;
+    }
 
-    wifi_credentials_t.data_available = preferences.getBool("data_available");
+    ESP_LOGI(TAG, "Can open preferences");
+
+    data_available = preferences.getBool("data_available");
     ssid = preferences.getString("SSID");
+    ESP_LOGI(TAG, "%s", ssid);
     password = preferences.getString("PASSWORD");
+    ESP_LOGI(TAG, "%s", password);
 
     memcpy(wifi_credentials_t.ssid, ssid, sizeof(wifi_credentials_t.ssid));
     memcpy(wifi_credentials_t.password, password, sizeof(wifi_credentials_t.password));
@@ -349,14 +358,31 @@ static int find_credentials(void)
 static int set_credentials(void) 
 {
     int ret = 0;
-    preferences.begin("credentials", false);
+    if(!preferences.begin("credentials", false)) {
+        ESP_LOGI(TAG, "Failed to open preferences");
+        return EXIT_FAILURE;
+    }
 
-    ESP_LOGI(TAG, "SSID: %s", wifi_credentials_t.ssid);
-    ESP_LOGI(TAG, "Password: %s", wifi_credentials_t.password);
+    ESP_LOGI(TAG, "SSID: %s", reinterpret_cast<char*>(wifi_credentials_t.ssid));
+    ESP_LOGI(TAG, "Password: %s",reinterpret_cast<char*>( wifi_credentials_t.password));
 
-    preferences.putString("SSID",  reinterpret_cast<char*>(wifi_credentials_t.ssid));
-    preferences.putString("PASSWORD",  reinterpret_cast<char*>(wifi_credentials_t.password));
-    preferences.putBool("data_available", true);
+    if(!preferences.putString("SSID",  reinterpret_cast<char*>(wifi_credentials_t.ssid))) {
+        ESP_LOGI(TAG, "Failed to write to preferences");
+        return EXIT_FAILURE;
+    }
+    if(!preferences.putString("PASSWORD",  reinterpret_cast<char*>(wifi_credentials_t.password))) {
+        ESP_LOGI(TAG, "Failed to write to preferences");
+        return EXIT_FAILURE;
+    }
+    if(!preferences.putBool("data_available", true)) {
+        ESP_LOGI(TAG, "Failed to write to preferences");
+        return EXIT_FAILURE;
+    }
+
+    if(preferences.getString("SSID") == NULL) {
+        ESP_LOGI(TAG, "Failed to read preferences");
+        return EXIT_FAILURE;
+    }
 
     preferences.end();
 
