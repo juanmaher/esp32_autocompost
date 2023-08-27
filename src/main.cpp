@@ -33,9 +33,6 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
-#include <Preferences.h>
-
-Preferences preferences;
 
 using namespace ESPFirebase;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
@@ -60,7 +57,6 @@ struct wifi_credentials{
 
 static void firebase_task(void * parm);
 static void smartconfig_example_task(void * parm);
-static int set_credentials(void);
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -217,7 +213,6 @@ static void smartconfig_example_task(void * parm)
             //esp_event_post(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &firebase_event, sizeof(firebase_event_data_t), portMAX_DELAY);
             //event_callback_function_firebase();
             isConnected = true;
-            set_credentials();
             xTaskCreate(firebase_task, "firebase_task", 4096, NULL, 3, NULL);
         }
         if(uxBits & WIFI_FAIL_BIT) {
@@ -311,92 +306,9 @@ static void firebase_task(void* arg)
     }
 }
 
-static int find_credentials(void)
-{
-    int ret = 0;
-    char * ssid;
-    char * password;
-    bool data_available;
-
-    ESP_LOGI(TAG, "find_credentials");
-    if(!preferences.begin("credentials")) {
-        ESP_LOGI(TAG, "Failed to open preferences");
-        return EXIT_FAILURE;
-    }
-
-    ESP_LOGI(TAG, "Can open preferences");
-
-    data_available = preferences.getBool("data_available");
-    ssid = preferences.getString("SSID");
-    ESP_LOGI(TAG, "%s", ssid);
-    password = preferences.getString("PASSWORD");
-    ESP_LOGI(TAG, "%s", password);
-
-    memcpy(wifi_credentials_t.ssid, ssid, sizeof(wifi_credentials_t.ssid));
-    memcpy(wifi_credentials_t.password, password, sizeof(wifi_credentials_t.password));
-
-    if(wifi_credentials_t.data_available) {
-        ESP_LOGI(TAG, "Credentials found");
-
-        if(wifi_credentials_t.ssid == NULL)
-            return ret;
-        ESP_LOGI(TAG, "SSID: %s", wifi_credentials_t.ssid);
-
-        if(wifi_credentials_t.password != NULL) 
-            return ret;
-        ESP_LOGI(TAG, "Password: %s", wifi_credentials_t.password);
-
-        ret = 1;
-    } else {
-        ESP_LOGI(TAG, "Credentials not found");
-    }
-
-    preferences.end();
-    return ret;
-}
-
-static int set_credentials(void) 
-{
-    int ret = 0;
-    if(!preferences.begin("credentials", false)) {
-        ESP_LOGI(TAG, "Failed to open preferences");
-        return EXIT_FAILURE;
-    }
-
-    ESP_LOGI(TAG, "SSID: %s", reinterpret_cast<char*>(wifi_credentials_t.ssid));
-    ESP_LOGI(TAG, "Password: %s",reinterpret_cast<char*>( wifi_credentials_t.password));
-
-    if(!preferences.putString("SSID",  reinterpret_cast<char*>(wifi_credentials_t.ssid))) {
-        ESP_LOGI(TAG, "Failed to write to preferences");
-        return EXIT_FAILURE;
-    }
-    if(!preferences.putString("PASSWORD",  reinterpret_cast<char*>(wifi_credentials_t.password))) {
-        ESP_LOGI(TAG, "Failed to write to preferences");
-        return EXIT_FAILURE;
-    }
-    if(!preferences.putBool("data_available", true)) {
-        ESP_LOGI(TAG, "Failed to write to preferences");
-        return EXIT_FAILURE;
-    }
-
-    if(preferences.getString("SSID") == NULL) {
-        ESP_LOGI(TAG, "Failed to read preferences");
-        return EXIT_FAILURE;
-    }
-
-    preferences.end();
-
-    return ret;
-}
-
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK( nvs_flash_init() );
-
-    if(find_credentials()) {
-        initialise_wifi(wifi_credentials_t.ssid, wifi_credentials_t.password);
-    } else {
-        initialise_wifi();
-    }
+    initialise_wifi();
 }
 
