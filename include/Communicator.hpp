@@ -5,7 +5,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/timers.h"
 #include "esp_log.h"
+
+/* Firebase includes */
+#include <value.h>
+#include <json.h>
+#include <app.h>
+#include <rtdb.h>
+#include "firebase_config.h"
+
+using namespace ESPFirebase;
 
 static const int MIXER_STATE_BIT = BIT0;
 static const int CRUSHER_STATE_BIT = BIT1;
@@ -17,8 +27,11 @@ class Communicator {
         Communicator();
         void start();
 
-private:
-
+    private:
+        RTDB db;
+        void configureFirebaseConnection();
+        Json::Value createFirebaseComposter(std::string path);
+        void updateParametersValues(TimerHandle_t xTimer);
 };
 
 #endif // COMMUNICATOR_H

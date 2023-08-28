@@ -12,6 +12,7 @@
 #define USER_EMAIL "juanma@gmail.com"   // This gmail does not exist outside your database. it only exists in the firebase project as a user
 #define USER_PASSWORD "123456789"      // Dont add your gmail credentials. Setup users authentication in your Firebase project first
 
+#define COMPOSTER_ID "00003"
 typedef struct {
     // Campos y datos adicionales del evento
     int data;
