@@ -18,7 +18,7 @@
 #include <app.h>
 #include <rtdb.h>
 
-#include "firebase_config.h"
+#include "config/firebase_config.h"
 
 #include <string.h>
 #include <stdlib.h>
