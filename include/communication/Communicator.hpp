@@ -17,8 +17,8 @@
 #include <rtdb.h>
 
 /* Internal includes */
-#include "ComposterParameters.hpp"
-#include "firebase_config.h"
+#include "common/ComposterParameters.hpp"
+#include "config/firebase_config.h"
 
 using namespace ESPFirebase;
 
