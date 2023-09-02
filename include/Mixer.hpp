@@ -11,7 +11,9 @@ ESP_EVENT_DECLARE_BASE(MIXER_EVENT);
 
 typedef enum {
     MIXER_EVENT_ON,
-    MIXER_EVENT_OFF
+    MIXER_EVENT_OFF,
+    MIXER_EVENT_MANUAL_ON,
+    MIXER_EVENT_MANUAL_OFF
 } MixerEvent_t;
 
 class Mixer {

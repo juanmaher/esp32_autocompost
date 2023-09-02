@@ -2,17 +2,22 @@
 #define COMMUNICATOR_H
 
 #include <string.h>
+
+/* FreeRTOS includes */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/timers.h"
-#include "esp_log.h"
 
-/* Firebase includes */
+/* Libraries includes */
+#include "esp_log.h"
 #include <value.h>
 #include <json.h>
 #include <app.h>
 #include <rtdb.h>
+
+/* Internal includes */
+#include "ComposterParameters.hpp"
 #include "firebase_config.h"
 
 using namespace ESPFirebase;
@@ -26,12 +31,14 @@ class Communicator {
     public:
         Communicator();
         void start();
+        static void updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db, ComposterParameters& composterParameters);
+        static Json::Value getFirebaseComposterData(RTDB& db);
+        RTDB db;
+        ComposterParameters composterParameters;
 
     private:
-        RTDB db;
         void configureFirebaseConnection();
-        Json::Value createFirebaseComposter(std::string path);
-        void updateParametersValues(TimerHandle_t xTimer);
+        static Json::Value createFirebaseComposter(RTDB& db);
 };
 
 #endif // COMMUNICATOR_H
