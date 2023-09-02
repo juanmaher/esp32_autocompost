@@ -1,9 +1,17 @@
 
 #include <iostream>
 #include <cstdint>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <value.h>
+#include <json.h>
+#include <app.h>
+#include <rtdb.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 
 #include "esp_log.h"
 #include "esp_system.h"
@@ -11,20 +19,8 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 
-
-#include <value.h>
-#include <json.h>
-
-#include <app.h>
-#include <rtdb.h>
-
 #include "firebase_config.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
 #include "esp_event.h"
@@ -33,6 +29,12 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
+
+//Sensors
+#include "DHT22.hpp"
+#include "rom/ets_sys.h"
+#include "driver/gpio.h"
+#include "sdkconfig.h"
 
 using namespace ESPFirebase;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
@@ -306,9 +308,31 @@ static void firebase_task(void* arg)
     }
 }
 
+
+void DHT_reader_task(void *pvParameter)
+{
+		setDHTgpio(GPIO_NUM_27);
+
+	while(1) {
+	
+		printf("DHT Sensor Readings\n" );
+		int ret = readDHT();
+		
+		errorHandler(ret);
+
+		printf("Humidity %.2f %%\n", getHumidity());
+		printf("Temperature %.2f degC\n\n", getTemperature());
+		
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+	}
+}
+
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK( nvs_flash_init() );
-    initialise_wifi();
+    //initialise_wifi();
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+	xTaskCreate(&DHT_reader_task, "DHT_reader_task", 2048, NULL, 5, NULL );
 }
 
