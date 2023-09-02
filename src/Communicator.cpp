@@ -9,7 +9,7 @@ static const bool DEBUG = true;
 std::string firebase_path = "/composters/" + std::string(COMPOSTER_ID);
 
 static void timer_callback_function(TimerHandle_t xTimer) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     Communicator* communicatorInstance = static_cast<Communicator*>(pvTimerGetTimerID(xTimer));
     if (communicatorInstance != nullptr) {
@@ -19,7 +19,7 @@ static void timer_callback_function(TimerHandle_t xTimer) {
 
 static void communicator_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
     if (strcmp(event_base, MIXER_EVENT) == 0) {
@@ -49,6 +49,7 @@ void writingChangesTask(void* param) {
 
         // Detectar cambios en el bit de estado de la mezcladora
         if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
+            if (DEBUG) ESP_LOGD(TAG, "Se detecto cambio estado de la mezcladora");
             communicatorInstance->composterParameters.getMixerState();
             if (uxBits & MIXER_STATE_BIT) {
                 communicatorInstance->composterParameters.setMixerState(true);
@@ -61,6 +62,7 @@ void writingChangesTask(void* param) {
 
         // Detectar cambios en el bit de estado del triturador
         if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
+            if (DEBUG) ESP_LOGD(TAG, "Se detecto cambio estado de la trituradora");
             communicatorInstance->composterParameters.getCrusherState();
             if (uxBits & CRUSHER_STATE_BIT) {
                 communicatorInstance->composterParameters.setCrusherState(true);
@@ -124,7 +126,7 @@ void readingChangesTask(void* param) {
 }
 
 Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     Json::Value data = db.getData(firebase_path.c_str());
 
@@ -136,7 +138,7 @@ Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
 }
 
 Json::Value Communicator::createFirebaseComposter(RTDB& db) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     std::string json_str = R"({"complete": 0, "days": 0, "humidity": 0, "temperature": 0, "mixer": false, "crusher": false, "fan": false})";
     db.putData(firebase_path.c_str(), json_str.c_str()); 
@@ -144,7 +146,7 @@ Json::Value Communicator::createFirebaseComposter(RTDB& db) {
 }
 
 void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db, ComposterParameters& composterParameters) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     Json::Value data = Communicator::getFirebaseComposterData(db);
 
@@ -162,7 +164,7 @@ void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db,
 }
 
 Communicator::Communicator() {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     s_communication_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -175,7 +177,7 @@ Communicator::Communicator() {
 }
 
 void Communicator::configureFirebaseConnection() {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     user_account_t account = {USER_EMAIL, USER_PASSWORD};
     FirebaseApp app = FirebaseApp(API_KEY);
@@ -184,7 +186,7 @@ void Communicator::configureFirebaseConnection() {
 }
 
 void Communicator::start() {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     xTaskCreate(readingChangesTask, "readingChangesTask", 1000, NULL, 1, NULL);
     xTaskCreate(writingChangesTask, "writingChangesTask", 1000, NULL, 1, NULL);
