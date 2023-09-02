@@ -5,16 +5,7 @@
 #include "freertos/task.h"
 #include "esp_event.h"
 #include "esp_log.h"
-
-// Definición de eventos de la mezcladora
-ESP_EVENT_DECLARE_BASE(MIXER_EVENT);
-
-typedef enum {
-    MIXER_EVENT_ON,
-    MIXER_EVENT_OFF,
-    MIXER_EVENT_MANUAL_ON,
-    MIXER_EVENT_MANUAL_OFF
-} MixerEvent_t;
+#include "common/events.h"
 
 class Mixer {
     public:

@@ -1,6 +1,7 @@
 #include "communication/Communicator.hpp"
-#include "actuators/Mixer.hpp"
-#include "actuators/Crusher.hpp"
+
+ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
+ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
 
 static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;

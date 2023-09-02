@@ -34,11 +34,11 @@
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
 
+#include "communication/Communicator.hpp"
+
 using namespace ESPFirebase;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
-
-ESP_EVENT_DECLARE_BASE(FIREBASE_EVENT);
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -127,69 +127,9 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL) );
     ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL) );
     ESP_ERROR_CHECK( esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL) );
-    //esp_event_handler_register(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &event_callback_function_firebase, NULL);
 
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_start() );
-}
-
-static esp_err_t initialise_wifi(const uint8_t * ssid, const uint8_t * password)
-{
-    esp_err_t ret = ESP_OK; 
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    s_wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-
-    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL) );
-    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL) );
-
-    wifi_config_t wifi_config;
-    memcpy(wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
-    memcpy(wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
-   
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    wifi_config.sta.pmf_cfg = {true, false};
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK( esp_wifi_start() );
-
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
-
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or
-    * connection failed for the maximum number of re-tries (WIFI_FAIL_BIT). The
-    * bits are set by event_handler() (see above) */
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we
-    * can test which event actually happened. */
-    if (bits & WIFI_CONNECTED_BIT) 
-    {
-        ESP_LOGW(TAG, "connected to ap SSID: %s || password: %s", ssid, password);
-        goto ret;
-    } 
-    else if (bits & WIFI_FAIL_BIT) 
-    {
-        ESP_LOGE(TAG, "Failed to connect to SSID: %s || password: %s", ssid, password);
-    } 
-    else 
-    {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-
-    return ESP_FAIL;
-
-ret:
-    /* The event will not be processed after unregister */
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, NULL));
-    vEventGroupDelete(s_wifi_event_group);
-    return ret;
 }
 
 static void smartconfig_example_task(void * parm)
@@ -199,20 +139,11 @@ static void smartconfig_example_task(void * parm)
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
 
-    // Crear una instancia del evento personalizado
-    firebase_event_data_t firebase_event;
-    firebase_event.data = 123;
-    strcpy(firebase_event.message, "Evento de Firebase");
-
     while (1) {
         uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, true, false, portMAX_DELAY);
         if(uxBits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
-            // Disparar el evento FIREBASE_EVENT con un identificador específico
-            //esp_event_post(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &firebase_event, sizeof(firebase_event_data_t), portMAX_DELAY);
-            //event_callback_function_firebase();
             isConnected = true;
-            //xTaskCreate(firebase_task, "firebase_task", 4096, NULL, 3, NULL);
         }
         if(uxBits & WIFI_FAIL_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
@@ -226,5 +157,8 @@ extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK( nvs_flash_init() );
     initialise_wifi();
+
+    Communicator communicator = Communicator();
+    communicator.start();
 }
 

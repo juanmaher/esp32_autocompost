@@ -18,6 +18,7 @@
 
 /* Internal includes */
 #include "common/ComposterParameters.hpp"
+#include "common/events.h"
 #include "config/firebase_config.h"
 
 using namespace ESPFirebase;
