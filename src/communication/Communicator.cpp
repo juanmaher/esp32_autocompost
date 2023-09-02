@@ -1,6 +1,6 @@
-#include "Communicator.hpp"
-#include "Mixer.hpp"
-#include "Crusher.hpp"
+#include "communication/Communicator.hpp"
+#include "actuators/Mixer.hpp"
+#include "actuators/Crusher.hpp"
 
 static EventGroupHandle_t s_communication_event_group;
 static const char *TAG = "Communicator";

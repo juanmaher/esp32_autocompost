@@ -1,4 +1,4 @@
-#include "Mixer.hpp"
+#include "actuators/Mixer.hpp"
 
 Mixer::Mixer() {
     // Constructor de la clase Mixer
