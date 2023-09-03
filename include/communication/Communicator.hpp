@@ -31,14 +31,15 @@ static const int TIME_STATE_BIT = BIT2;
 class Communicator {
     public:
         Communicator();
+        ~Communicator();
         void start();
         static void updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db, ComposterParameters& composterParameters);
         static Json::Value getFirebaseComposterData(RTDB& db);
         RTDB db;
         ComposterParameters composterParameters;
+        void configureFirebaseConnection();
 
     private:
-        void configureFirebaseConnection();
         static Json::Value createFirebaseComposter(RTDB& db);
 };
 

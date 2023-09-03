@@ -1,3 +1,5 @@
+#include "esp_wifi.h"
+
 #include "communication/Communicator.hpp"
 
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
@@ -8,6 +10,7 @@ static EventGroupHandle_t s_communication_event_group;
 static const char *TAG = "Communicator";
 static const bool DEBUG = true;
 std::string firebase_path = "/composters/" + std::string(COMPOSTER_ID);
+bool wifi_connected = false;
 
 static void timer_callback_function(TimerHandle_t xTimer) {
     if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
@@ -23,7 +26,16 @@ static void communicator_event_handler(void* arg, esp_event_base_t event_base,
     if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
-    if (strcmp(event_base, MIXER_EVENT) == 0) {
+    Communicator* communicatorInstance = static_cast<Communicator*>(arg);
+
+    if (strcmp(event_base, WIFI_EVENT) == 0) {
+        if (event_id == WIFI_EVENT_CONNECTION_ON) {
+            communicatorInstance->configureFirebaseConnection();
+            wifi_connected = true;
+        } else if (event_id == WIFI_EVENT_CONNECTION_OFF) {
+            wifi_connected = false;
+        }
+    } else if (strcmp(event_base, MIXER_EVENT) == 0) {
         if (event_id == MIXER_EVENT_ON) {
             xEventGroupSetBits(s_communication_event_group, MIXER_STATE_BIT);
         } else if (event_id == MIXER_EVENT_OFF) {
@@ -43,8 +55,7 @@ void writingChangesTask(void* param) {
     EventBits_t prevBits = xEventGroupGetBits(s_communication_event_group);
     Communicator* communicatorInstance = static_cast<Communicator*>(param);
 
-    // Mientras este conectado a Wi-Fi
-    while (true) {
+    while (wifi_connected) {
         uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         Json::Value data = Communicator::getFirebaseComposterData(communicatorInstance->db);
 
@@ -86,8 +97,7 @@ void writingChangesTask(void* param) {
 void readingChangesTask(void* param) {
     Communicator* communicatorInstance = static_cast<Communicator*>(param);
 
-    // TODO: Mientras este conectado a Wi-Fi
-    while (true) {
+    while (wifi_connected) {
         Json::Value data = Communicator::getFirebaseComposterData(communicatorInstance->db);
         
         if (data["mixer"].asBool() != communicatorInstance->composterParameters.getMixerState()) {
@@ -168,13 +178,15 @@ Communicator::Communicator() {
     if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
 
     s_communication_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_event_handler_register(MIXER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
 
     communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(6 * 60 * 60 * 1000), pdTRUE, NULL, timer_callback_function);
+}
 
-    configureFirebaseConnection();
+Communicator::~Communicator() {
+    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    wifi_connected = false;
 }
 
 void Communicator::configureFirebaseConnection() {

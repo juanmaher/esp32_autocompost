@@ -27,6 +27,11 @@ typedef enum {
     MIXER_EVENT_MANUAL_OFF
 } MixerEvent_t;
 
+typedef enum {
+    WIFI_EVENT_CONNECTION_ON,
+    WIFI_EVENT_CONNECTION_OFF
+} WifiEvent_t;
+
 #ifdef __cplusplus
 }
 #endif
