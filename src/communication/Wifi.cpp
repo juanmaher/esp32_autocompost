@@ -20,7 +20,7 @@ static EventGroupHandle_t s_wifi_event_group;
 static const int WIFI_CONNECTED_BIT = BIT0;
 static const int WIFI_FAIL_BIT = BIT1;
 
-static const char *TAG = "Wifi";
+static const char *TAG = "AC_Wifi";
 static const bool DEBUG = true;
 
 struct wifi_credentials{
@@ -34,7 +34,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 static void smartconfig_task(void * parm);
 
 Wifi::Wifi() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_netif_init());
     s_wifi_event_group = xEventGroupCreate();
@@ -49,14 +49,15 @@ Wifi::Wifi() {
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    Wifi::start();
 }
 
 Wifi::~Wifi() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 }
 
 void Wifi::start() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_wifi_start());
 }
@@ -64,7 +65,7 @@ void Wifi::start() {
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {

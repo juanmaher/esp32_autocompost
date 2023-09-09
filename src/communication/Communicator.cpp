@@ -1,28 +1,32 @@
 #include "communication/Communicator.hpp"
 
+#define communicatorUPDATING_PARAMATERS_PERIOD      pdMS_TO_TICKS(300000000000)
+
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;
-static const char *TAG = "Communicator";
+static const char *TAG = "AC_Communicator";
 static const bool DEBUG = true;
 std::string firebase_path = "/composters/" + std::string(COMPOSTER_ID);
 bool wifi_connected = false;
 
 static void timer_callback_function(TimerHandle_t xTimer) {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
-    Communicator* communicatorInstance = static_cast<Communicator*>(pvTimerGetTimerID(xTimer));
-    if (communicatorInstance != nullptr) {
-        communicatorInstance->updateSensorsParametersValues(xTimer, communicatorInstance->db, communicatorInstance->composterParameters);
+    if (wifi_connected) {
+        Communicator* communicatorInstance = static_cast<Communicator*>(pvTimerGetTimerID(xTimer));
+        if (communicatorInstance != nullptr) {
+            communicatorInstance->updateSensorsParametersValues(xTimer, communicatorInstance->db, communicatorInstance->composterParameters);
+        }
     }
 }
 
 static void communicator_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
     Communicator* communicatorInstance = static_cast<Communicator*>(arg);
@@ -54,13 +58,14 @@ void writingChangesTask(void* param) {
     EventBits_t prevBits = xEventGroupGetBits(s_communication_event_group);
     Communicator* communicatorInstance = static_cast<Communicator*>(param);
 
-    while (wifi_connected) {
-        uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    while (true) {
+        if (wifi_connected) {
+            uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         Json::Value data = Communicator::getFirebaseComposterData(communicatorInstance->db);
 
         // Detectar cambios en el bit de estado de la mezcladora
         if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
-            ESP_LOGD(TAG, "Se detecto cambio estado de la mezcladora");
+            ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
             communicatorInstance->composterParameters.getMixerState();
             if (uxBits & MIXER_STATE_BIT) {
                 communicatorInstance->composterParameters.setMixerState(true);
@@ -73,7 +78,7 @@ void writingChangesTask(void* param) {
 
         // Detectar cambios en el bit de estado del triturador
         if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
-            ESP_LOGD(TAG, "Se detecto cambio estado de la trituradora");
+            ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
             communicatorInstance->composterParameters.getCrusherState();
             if (uxBits & CRUSHER_STATE_BIT) {
                 communicatorInstance->composterParameters.setCrusherState(true);
@@ -86,7 +91,7 @@ void writingChangesTask(void* param) {
 
         // Guardar los bits actuales para la próxima iteración
         prevBits = uxBits;
-
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
@@ -96,39 +101,40 @@ void writingChangesTask(void* param) {
 void readingChangesTask(void* param) {
     Communicator* communicatorInstance = static_cast<Communicator*>(param);
 
-    while (wifi_connected) {
-        Json::Value data = Communicator::getFirebaseComposterData(communicatorInstance->db);
-        
-        if (data["mixer"].asBool() != communicatorInstance->composterParameters.getMixerState()) {
-            if (true == data["mixer"].asBool()) {
-                ESP_LOGD(TAG, "Inicio manual de mezcladora");
-                esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
-            } else if (false == data["mixer"].asBool()) {
-                ESP_LOGD(TAG, "Apagado manual de mezcladora");
-                esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
+    while (true) {
+        if (wifi_connected) {
+            Json::Value data = Communicator::getFirebaseComposterData(communicatorInstance->db);
+            
+            if (data["mixer"].asBool() != communicatorInstance->composterParameters.getMixerState()) {
+                if (true == data["mixer"].asBool()) {
+                    ESP_LOGI(TAG, "Inicio manual de mezcladora");
+                    esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
+                } else if (false == data["mixer"].asBool()) {
+                    ESP_LOGI(TAG, "Apagado manual de mezcladora");
+                    esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
+                }
+            }
+
+            if (data["crusher"].asBool() != communicatorInstance->composterParameters.getCrusherState()) {
+                if (true == data["crusher"].asBool()) {
+                    ESP_LOGI(TAG, "Inicio manual de trituradora");
+                    esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
+                } else if (false == data["crusher"].asBool()) {
+                    ESP_LOGI(TAG, "Apagado manual de trituradora");
+                    esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
+                }
+            }
+
+            if (data["fan"].asBool() != communicatorInstance->composterParameters.getFanState()) {
+                if (true == data["fan"].asBool()) {
+                    ESP_LOGI(TAG, "Apagado manual de ventilador");
+                    // Evento de inicio de ventilador
+                } else if (false == data["fan"].asBool()) {
+                    ESP_LOGI(TAG, "Apagado manual de ventilador");
+                    // Evento de fin de ventilador
+                }
             }
         }
-
-        if (data["crusher"].asBool() != communicatorInstance->composterParameters.getCrusherState()) {
-            if (true == data["crusher"].asBool()) {
-                ESP_LOGD(TAG, "Inicio manual de trituradora");
-                esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
-            } else if (false == data["crusher"].asBool()) {
-                ESP_LOGD(TAG, "Apagado manual de trituradora");
-                esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
-            }
-        }
-
-        if (data["fan"].asBool() != communicatorInstance->composterParameters.getFanState()) {
-            if (true == data["fan"].asBool()) {
-                ESP_LOGD(TAG, "Apagado manual de ventilador");
-                // Evento de inicio de ventilador
-            } else if (false == data["fan"].asBool()) {
-                ESP_LOGD(TAG, "Apagado manual de ventilador");
-                // Evento de fin de ventilador
-            }
-        }
-
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
@@ -136,7 +142,7 @@ void readingChangesTask(void* param) {
 }
 
 Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     Json::Value data = db.getData(firebase_path.c_str());
 
@@ -148,7 +154,7 @@ Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
 }
 
 Json::Value Communicator::createFirebaseComposter(RTDB& db) {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     std::string json_str = R"({"complete": 0, "days": 0, "humidity": 0, "temperature": 0, "mixer": false, "crusher": false, "fan": false})";
     db.putData(firebase_path.c_str(), json_str.c_str()); 
@@ -156,7 +162,7 @@ Json::Value Communicator::createFirebaseComposter(RTDB& db) {
 }
 
 void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db, ComposterParameters& composterParameters) {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     Json::Value data = Communicator::getFirebaseComposterData(db);
 
@@ -174,23 +180,23 @@ void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db,
 }
 
 Communicator::Communicator() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     s_communication_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_handler_register(MIXER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
 
-    communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(6 * 60 * 60 * 1000), pdTRUE, NULL, timer_callback_function);
+    communicatorTimer = xTimerCreate("CommunicatorTimer", communicatorUPDATING_PARAMATERS_PERIOD, pdTRUE, NULL, timer_callback_function);
 }
 
 Communicator::~Communicator() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
     wifi_connected = false;
 }
 
 void Communicator::configureFirebaseConnection() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
     user_account_t account = {USER_EMAIL, USER_PASSWORD};
     FirebaseApp app = FirebaseApp(API_KEY);
@@ -199,9 +205,9 @@ void Communicator::configureFirebaseConnection() {
 }
 
 void Communicator::start() {
-    ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGI(TAG, "on %s", __func__);
 
-    xTaskCreate(readingChangesTask, "readingChangesTask", 1000, NULL, 1, NULL);
-    xTaskCreate(writingChangesTask, "writingChangesTask", 1000, NULL, 1, NULL);
+    xTaskCreate(readingChangesTask, "readingChangesTask", 4096, NULL, 1, NULL);
+    xTaskCreate(writingChangesTask, "writingChangesTask", 4096, NULL, 1, NULL);
     xTimerStart(communicatorTimer, portMAX_DELAY);
 }
