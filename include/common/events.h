@@ -27,6 +27,9 @@ typedef enum {
     MIXER_EVENT_MANUAL_OFF
 } MixerEvent_t;
 
+// Definición de eventos de la WIFI
+ESP_EVENT_DECLARE_BASE(WIFI_EVENT_INTERNAL);
+
 typedef enum {
     WIFI_EVENT_CONNECTION_ON,
     WIFI_EVENT_CONNECTION_OFF

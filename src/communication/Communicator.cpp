@@ -1,9 +1,8 @@
-#include "esp_wifi.h"
-
 #include "communication/Communicator.hpp"
 
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
+ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;
@@ -13,7 +12,7 @@ std::string firebase_path = "/composters/" + std::string(COMPOSTER_ID);
 bool wifi_connected = false;
 
 static void timer_callback_function(TimerHandle_t xTimer) {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     Communicator* communicatorInstance = static_cast<Communicator*>(pvTimerGetTimerID(xTimer));
     if (communicatorInstance != nullptr) {
@@ -23,12 +22,12 @@ static void timer_callback_function(TimerHandle_t xTimer) {
 
 static void communicator_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
     Communicator* communicatorInstance = static_cast<Communicator*>(arg);
 
-    if (strcmp(event_base, WIFI_EVENT) == 0) {
+    if (strcmp(event_base, WIFI_EVENT_INTERNAL) == 0) {
         if (event_id == WIFI_EVENT_CONNECTION_ON) {
             communicatorInstance->configureFirebaseConnection();
             wifi_connected = true;
@@ -61,7 +60,7 @@ void writingChangesTask(void* param) {
 
         // Detectar cambios en el bit de estado de la mezcladora
         if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
-            if (DEBUG) ESP_LOGD(TAG, "Se detecto cambio estado de la mezcladora");
+            ESP_LOGD(TAG, "Se detecto cambio estado de la mezcladora");
             communicatorInstance->composterParameters.getMixerState();
             if (uxBits & MIXER_STATE_BIT) {
                 communicatorInstance->composterParameters.setMixerState(true);
@@ -74,7 +73,7 @@ void writingChangesTask(void* param) {
 
         // Detectar cambios en el bit de estado del triturador
         if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
-            if (DEBUG) ESP_LOGD(TAG, "Se detecto cambio estado de la trituradora");
+            ESP_LOGD(TAG, "Se detecto cambio estado de la trituradora");
             communicatorInstance->composterParameters.getCrusherState();
             if (uxBits & CRUSHER_STATE_BIT) {
                 communicatorInstance->composterParameters.setCrusherState(true);
@@ -102,30 +101,30 @@ void readingChangesTask(void* param) {
         
         if (data["mixer"].asBool() != communicatorInstance->composterParameters.getMixerState()) {
             if (true == data["mixer"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Inicio manual de mezcladora");
+                ESP_LOGD(TAG, "Inicio manual de mezcladora");
                 esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
             } else if (false == data["mixer"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Apagado manual de mezcladora");
+                ESP_LOGD(TAG, "Apagado manual de mezcladora");
                 esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
             }
         }
 
         if (data["crusher"].asBool() != communicatorInstance->composterParameters.getCrusherState()) {
             if (true == data["crusher"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Inicio manual de trituradora");
+                ESP_LOGD(TAG, "Inicio manual de trituradora");
                 esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
             } else if (false == data["crusher"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Apagado manual de trituradora");
+                ESP_LOGD(TAG, "Apagado manual de trituradora");
                 esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
             }
         }
 
         if (data["fan"].asBool() != communicatorInstance->composterParameters.getFanState()) {
             if (true == data["fan"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Apagado manual de ventilador");
+                ESP_LOGD(TAG, "Apagado manual de ventilador");
                 // Evento de inicio de ventilador
             } else if (false == data["fan"].asBool()) {
-                if (DEBUG) ESP_LOGD(TAG, "Apagado manual de ventilador");
+                ESP_LOGD(TAG, "Apagado manual de ventilador");
                 // Evento de fin de ventilador
             }
         }
@@ -137,7 +136,7 @@ void readingChangesTask(void* param) {
 }
 
 Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     Json::Value data = db.getData(firebase_path.c_str());
 
@@ -149,7 +148,7 @@ Json::Value Communicator::getFirebaseComposterData(RTDB& db) {
 }
 
 Json::Value Communicator::createFirebaseComposter(RTDB& db) {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     std::string json_str = R"({"complete": 0, "days": 0, "humidity": 0, "temperature": 0, "mixer": false, "crusher": false, "fan": false})";
     db.putData(firebase_path.c_str(), json_str.c_str()); 
@@ -157,7 +156,7 @@ Json::Value Communicator::createFirebaseComposter(RTDB& db) {
 }
 
 void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db, ComposterParameters& composterParameters) {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     Json::Value data = Communicator::getFirebaseComposterData(db);
 
@@ -175,22 +174,23 @@ void Communicator::updateSensorsParametersValues(TimerHandle_t xTimer, RTDB& db,
 }
 
 Communicator::Communicator() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     s_communication_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_handler_register(MIXER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, ESP_EVENT_ANY_ID, &communicator_event_handler, NULL));
 
     communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(6 * 60 * 60 * 1000), pdTRUE, NULL, timer_callback_function);
 }
 
 Communicator::~Communicator() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
     wifi_connected = false;
 }
 
 void Communicator::configureFirebaseConnection() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     user_account_t account = {USER_EMAIL, USER_PASSWORD};
     FirebaseApp app = FirebaseApp(API_KEY);
@@ -199,7 +199,7 @@ void Communicator::configureFirebaseConnection() {
 }
 
 void Communicator::start() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     xTaskCreate(readingChangesTask, "readingChangesTask", 1000, NULL, 1, NULL);
     xTaskCreate(writingChangesTask, "writingChangesTask", 1000, NULL, 1, NULL);

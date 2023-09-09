@@ -34,7 +34,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 static void smartconfig_task(void * parm);
 
 Wifi::Wifi() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_netif_init());
     s_wifi_event_group = xEventGroupCreate();
@@ -52,11 +52,11 @@ Wifi::Wifi() {
 }
 
 Wifi::~Wifi() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 }
 
 void Wifi::start() {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_wifi_start());
 }
@@ -64,13 +64,13 @@ void Wifi::start() {
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
-    if (DEBUG) ESP_LOGD(TAG, "on %s", __func__);
+    ESP_LOGD(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %lu", event_base, event_id);
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         xTaskCreate(smartconfig_task, "smartconfig_task", 4096, NULL, 3, NULL);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_event_post(WIFI_EVENT, static_cast<int>(WIFI_EVENT_CONNECTION_OFF), nullptr, 0, portMAX_DELAY);
+        esp_event_post(WIFI_EVENT_INTERNAL, static_cast<int>(WIFI_EVENT_CONNECTION_OFF), nullptr, 0, portMAX_DELAY);
         esp_wifi_connect();
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
@@ -132,7 +132,7 @@ static void smartconfig_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, true, false, portMAX_DELAY);
         if(uxBits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
-            esp_event_post(WIFI_EVENT, static_cast<int>(WIFI_EVENT_CONNECTION_ON), nullptr, 0, portMAX_DELAY);
+            esp_event_post(WIFI_EVENT_INTERNAL, static_cast<int>(WIFI_EVENT_CONNECTION_ON), nullptr, 0, portMAX_DELAY);
         }
         if(uxBits & WIFI_FAIL_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
