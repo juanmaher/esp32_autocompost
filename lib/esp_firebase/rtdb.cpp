@@ -11,12 +11,18 @@
 namespace ESPFirebase {
 
 
-RTDB::RTDB(FirebaseApp* app, const char * database_url)
-    : app(app), base_database_url(database_url)
-
+RTDB::RTDB()
 {
-    
+    app = nullptr;
+    base_database_url = "";
 }
+
+void RTDB::initialize(FirebaseApp* app, const char* database_url)
+{
+    this->app = app;
+    this->base_database_url = database_url;
+}
+
 Json::Value RTDB::getData(const char* path)
 {
     
