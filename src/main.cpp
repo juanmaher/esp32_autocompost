@@ -4,6 +4,7 @@
 #include "actuators/Mixer.hpp"
 #include "actuators/Crusher.hpp"
 #include "sensors/HumiditySensor.hpp"
+#include "sensors/TemperatureSensor.hpp"
 
 extern "C" int app_main(void)
 {
@@ -22,8 +23,10 @@ extern "C" int app_main(void)
     crusher.start();*/
 
 
-    HumiditySensor humiditySensor = HumiditySensor();
-    humiditySensor.start();
+    //HumiditySensor humiditySensor = HumiditySensor();
+    //humiditySensor.start();
+
+    start_temp();
 
 
     while(true);
