@@ -26,7 +26,8 @@ extern "C" int app_main(void)
     //HumiditySensor humiditySensor = HumiditySensor();
     //humiditySensor.start();
 
-    start_temp();
+    TemperatureSensor temperatureSensor = TemperatureSensor();
+    temperatureSensor.start();
 
 
     while(true);
