@@ -23,8 +23,8 @@ extern "C" int app_main(void)
     crusher.start();*/
 
 
-    //HumiditySensor humiditySensor = HumiditySensor();
-    //humiditySensor.start();
+    HumiditySensor humiditySensor = HumiditySensor();
+    humiditySensor.start();
 
     TemperatureSensor temperatureSensor = TemperatureSensor();
     temperatureSensor.start();

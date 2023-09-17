@@ -7,15 +7,14 @@
 
 static const char *TAG = "AC_TemperatureSensor";
 
-#define ONEWIRE_GPIO_PIN        GPIO_NUM_5
-#define ONEWIRE_MAX_DEVICES     1
+#define TEMPERATURE_SENSOR_GPIO_PIN        GPIO_NUM_5
+#define ONEWIRE_MAX_DEVICES                1
 
 onewire_rmt_config_t config;
 onewire_bus_handle_t handle;
 onewire_rom_search_context_handler_t context_handler;
 uint8_t device_num = 0;
 uint8_t device_rom_id[ONEWIRE_MAX_DEVICES][8];
-
 
 
 void temperature_reader_task(void *pvParameter) {
@@ -60,7 +59,7 @@ void temperature_reader_task(void *pvParameter) {
 TemperatureSensor::TemperatureSensor() {
 
     config = {
-        .gpio_pin = ONEWIRE_GPIO_PIN,
+        .gpio_pin = TEMPERATURE_SENSOR_GPIO_PIN,
         .max_rx_bytes = 10, // 10 tx bytes(1byte ROM command + 8byte ROM number + 1byte device command)
     };
 
@@ -96,9 +95,3 @@ void TemperatureSensor::start() {
     xTaskCreate(temperature_reader_task, "temperature_reader_task", 2048, NULL, 5, NULL);
 }
 
-void start_temp(void)
-{
-
-
-
-}
