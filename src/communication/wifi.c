@@ -1,39 +1,34 @@
-#include <cstring>
+// wifi.c
 
-/* FreeRTOS includes */
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
-
-/* ESP-IDF includes */
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
-
-/* Internal includes */
-#include "communication/Wifi.hpp"
+#include "common/events.h"
+#include "communication/wifi.h"
 
 static EventGroupHandle_t s_wifi_event_group;
-
 static const int WIFI_CONNECTED_BIT = BIT0;
 static const int WIFI_FAIL_BIT = BIT1;
 
 static const char *TAG = "AC_Wifi";
-static const bool DEBUG = true;
 
-struct wifi_credentials{
-    bool data_available = false;
-    uint8_t ssid[32] = { 0 };
-    uint8_t password[64] = { 0 };
+static struct wifi_credentials {
+    bool data_available;
+    uint8_t ssid[32];
+    uint8_t password[64];
 } wifi_credentials_t;
 
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void Wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data);
 static void smartconfig_task(void * parm);
 
-Wifi::Wifi() {
+void Wifi_start() {
     ESP_LOGI(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -44,25 +39,15 @@ Wifi::Wifi() {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &Wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &Wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &Wifi_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    Wifi::start();
-}
-
-Wifi::~Wifi() {
-    ESP_LOGI(TAG, "on %s", __func__);
-}
-
-void Wifi::start() {
-    ESP_LOGI(TAG, "on %s", __func__);
-
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void Wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
     ESP_LOGI(TAG, "on %s", __func__);
@@ -71,7 +56,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         xTaskCreate(smartconfig_task, "smartconfig_task", 4096, NULL, 3, NULL);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_event_post(WIFI_EVENT_INTERNAL, static_cast<int>(WIFI_EVENT_CONNECTION_OFF), nullptr, 0, portMAX_DELAY);
+        esp_event_post(WIFI_EVENT_INTERNAL, (int)WIFI_EVENT_CONNECTION_OFF, NULL, 0, portMAX_DELAY);
         esp_wifi_connect();
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
@@ -108,7 +93,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         if (evt->type == SC_TYPE_ESPTOUCH_V2) {
             ESP_ERROR_CHECK(esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)));
             ESP_LOGI(TAG, "RVD_DATA:");
-            for (int i=0; i<33; i++) {
+            for (int i = 0; i < 33; i++) {
                 printf("%02x ", rvd_data[i]);
             }
             printf("\n");
@@ -122,8 +107,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-static void smartconfig_task(void * parm)
-{
+static void smartconfig_task(void *parm) {
     EventBits_t uxBits;
     ESP_ERROR_CHECK(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH));
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
@@ -131,11 +115,11 @@ static void smartconfig_task(void * parm)
 
     while (1) {
         uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, true, false, portMAX_DELAY);
-        if(uxBits & WIFI_CONNECTED_BIT) {
+        if (uxBits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
-            esp_event_post(WIFI_EVENT_INTERNAL, static_cast<int>(WIFI_EVENT_CONNECTION_ON), nullptr, 0, portMAX_DELAY);
+            esp_event_post(WIFI_EVENT_INTERNAL, (int)WIFI_EVENT_CONNECTION_ON, NULL, 0, portMAX_DELAY);
         }
-        if(uxBits & WIFI_FAIL_BIT) {
+        if (uxBits & WIFI_FAIL_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
             esp_smartconfig_stop();
             vTaskDelete(NULL);
