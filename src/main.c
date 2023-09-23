@@ -4,7 +4,7 @@
 // #include "communication/Wifi.hpp"
 // #include "actuators/Mixer.hpp"
 // #include "actuators/Crusher.hpp"
-// #include "sensors/CapactitySensor.h"
+#include "sensors/CapactitySensor.h"
 #include "sensors/HumiditySensor.h"
 #include "sensors/TemperatureSensor.h"
 
@@ -32,6 +32,10 @@ int app_main(void)
     TemperatureSensor_t temperatureSensor;
     TemperatureSensor_Init(&temperatureSensor);
     TemperatureSensor_Start(&temperatureSensor);
+
+    CapacitySensor_t capacitySensor;
+    CapacitySensor_Init(&capacitySensor);
+    CapacitySensor_Start(&capacitySensor);
 
     while(true);
     return 0;
