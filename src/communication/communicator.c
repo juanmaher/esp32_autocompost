@@ -21,7 +21,7 @@ ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static const char *TAG = "AC_Communicator";
-static const char firebase_path[] = "/composters/000002";
+static const char firebase_path[] = "/composters/000005";
 
 static bool wifi_connected = false;
 static bool firebase_active_session = false;
@@ -35,6 +35,8 @@ static void Communicator_event_handler(void* arg, esp_event_base_t event_base,
 //static void writingChangesTask(void* param);
 static void readingChangesTask(void* param);
 static void connectionTask(void* param);
+static void Communicator_getFirebaseComposterData();
+static void Communicator_createFirebaseComposter();
 
 static RTDB_t * db;
 //static ComposterParameters_t composterParameters;
@@ -60,17 +62,17 @@ static void Communicator_getFirebaseComposterData() {
 
     ESP_LOGI(TAG, "%s", json_str);
 
-    /*if (json_str == NULL) {
+    if (strcmp(json_str, "null") == 0) {
         Communicator_createFirebaseComposter();
-    }*/
+    }
 }
 
-/*static void Communicator_createFirebaseComposter() {
+static void Communicator_createFirebaseComposter() {
     ESP_LOGI(TAG, "on %s", __func__);
 
     char json_str[] = "{\"complete\": 0, \"days\": 0, \"humidity\": 0, \"temperature\": 0, \"mixer\": false, \"crusher\": false, \"fan\": false}";
-    RTDB_putData(db, firebase_path, json_str);
-}*/
+    db->putData(db, firebase_path, json_str);
+}
 
 /*static void Communicator_updateSensorsParametersValues(TimerHandle_t xTimer) {
     ESP_LOGI(TAG, "on %s", __func__);
@@ -91,11 +93,6 @@ static void Communicator_getFirebaseComposterData() {
 
 static void Communicator_configureFirebaseConnection() {
     ESP_LOGI(TAG, "on %s", __func__);
-
-    /*user_data_t account = {USER_EMAIL, USER_PASSWORD};
-    db = RTDB_Create();
-    db->initialize(db, API_KEY, account, DATABASE_URL);
-    firebase_active_session = true;*/
 
     user_data_t account = {USER_EMAIL, USER_PASSWORD};
     db = RTDB_Create(API_KEY, account, DATABASE_URL);
