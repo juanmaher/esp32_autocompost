@@ -20,7 +20,7 @@
 #include "esp_system.h"
 #include "driver/gpio.h"
 #include <rom/ets_sys.h>
-#include "drivers/DHT22.hpp"
+#include "drivers/DHT22.h"
 
 // == global defines =============================================
 
