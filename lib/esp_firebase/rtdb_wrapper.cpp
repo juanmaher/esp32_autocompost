@@ -7,8 +7,9 @@
 static const char *TAG = "RTDB_Wrapper";
 
 int RTDB_Initialize(RTDB_t* me, const char * api_key, user_account_t account, const char* database_url);
-const char * RTDB_GetData(RTDB_t* me, const char* path);
+cJSON * RTDB_GetData(RTDB_t* me, const char* path);
 int RTDB_PutData(RTDB_t* me, const char* path, const char* json_str);
+int RTDB_PutDataJson(RTDB_t* me, const char* path, cJSON* data_json);
 int RTDB_PostData(RTDB_t* me, const char* path, const char* json_str);
 int RTDB_PatchData(RTDB_t* me, const char* path, const char* json_str);
 int RTDB_DeleteData(RTDB_t* me, const char* path);
@@ -29,6 +30,7 @@ RTDB_t* RTDB_Create(const char * api_key, user_data_t account, const char* datab
         *((void **) &me->initialize)    = (void *) RTDB_Initialize;
         *((void **) &me->getData)       = (void *) RTDB_GetData;
         *((void **) &me->putData)       = (void *) RTDB_PutData;
+        *((void **) &me->putDataJson)   = (void *) RTDB_PutDataJson;
         *((void **) &me->postData)      = (void *) RTDB_PostData;
         *((void **) &me->patchData)     = (void *) RTDB_PatchData;
         *((void **) &me->deleteData)    = (void *) RTDB_DeleteData;
@@ -61,7 +63,7 @@ int RTDB_Initialize(RTDB_t* me, const char * api_key, user_account_t account, co
     return ESP_OK;
 }
 
-const char * RTDB_GetData(RTDB_t* me, const char* path) {
+cJSON * RTDB_GetData(RTDB_t* me, const char* path) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     RTDB *obj;
     cJSON *data_json = NULL;
@@ -70,23 +72,15 @@ const char * RTDB_GetData(RTDB_t* me, const char* path) {
         return NULL;
     }
 
-    if (DEBUG) ESP_LOGI(TAG, "on %s: %d", __func__, __LINE__);
     obj = static_cast<RTDB *>(me->obj);
-    data_json = obj->getData(path); // Supongo que esta función devuelve un cJSON* con los datos
+    data_json = obj->getData(path);
     
     if (data_json == NULL) {
         return NULL;
     }
-    
-    char *data_str = cJSON_PrintUnformatted(data_json);
-    cJSON_Delete(data_json);
 
-    if (DEBUG) ESP_LOGI(TAG, "on %s: %d", __func__, __LINE__);
-    if (DEBUG) ESP_LOGI(TAG, "%s", data_str);
-
-    return data_str;
+    return data_json;
 }
-
 
 int RTDB_PutData(RTDB_t* me, const char* path, const char* json_str) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
@@ -98,6 +92,18 @@ int RTDB_PutData(RTDB_t* me, const char* path, const char* json_str) {
     obj = static_cast<RTDB *>(me->obj);
     return obj->putData(path, json_str);
 }
+
+int RTDB_PutDataJson(RTDB_t* me, const char* path, cJSON* data_json) {
+    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    RTDB *obj;
+    if (me == NULL) {
+        return ESP_FAIL;
+    }
+
+    obj = static_cast<RTDB *>(me->obj);
+    return obj->putData(path, data_json);
+}
+
 
 int RTDB_PostData(RTDB_t* me, const char* path, const char* json_str) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);

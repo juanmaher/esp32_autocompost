@@ -11,20 +11,22 @@
 #include "cJSON.h"
 #include "rtdb_wrapper.h"
 
-//#include "common/ComposterParameters.h"
-#include "communication/communicator.h"
 #include "common/events.h"
+#include "common/composter_parameters.h"
 #include "config/firebase_config.h"
+#include "communication/communicator.h"
 
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static const char *TAG = "AC_Communicator";
-static const char firebase_path[] = "/composters/000005";
+static const char firebase_path[] = "/composters/000002";
 
 static bool wifi_connected = false;
 static bool firebase_active_session = false;
+
+extern ComposterParameters composterParameters;
 
 static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;
@@ -35,11 +37,11 @@ static void Communicator_event_handler(void* arg, esp_event_base_t event_base,
 //static void writingChangesTask(void* param);
 static void readingChangesTask(void* param);
 static void connectionTask(void* param);
-static void Communicator_getFirebaseComposterData();
-static void Communicator_createFirebaseComposter();
+static cJSON * Communicator_getFirebaseComposterData();
+static cJSON * Communicator_createFirebaseComposter();
+static esp_err_t Communicator_updateSensorsParametersValues();
 
 static RTDB_t * db;
-//static ComposterParameters_t composterParameters;
 
 void Communicator_start() {
     ESP_LOGI(TAG, "on %s", __func__);
@@ -49,47 +51,78 @@ void Communicator_start() {
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
 
-    xTaskCreate(connectionTask, "connectionTask", 4096, NULL, 3, NULL); 
-    xTaskCreate(readingChangesTask, "readingChangesTask", 4096, NULL, 3, NULL);
+    xTaskCreate(connectionTask, "connectionTask", 8192, NULL, 3, NULL); 
+    xTaskCreate(readingChangesTask, "readingChangesTask", 8192, NULL, 3, NULL);
     //xTaskCreate(writingChangesTask, "writingChangesTask", 4096, NULL, 3, NULL);
 }
 
-static void Communicator_getFirebaseComposterData() {
+static cJSON * Communicator_getFirebaseComposterData() {
     ESP_LOGI(TAG, "on %s", __func__);
 
-    char json_str[256];
-    strcpy(json_str, db->getData(db, firebase_path));
+    cJSON * data_json = db->getData(db, firebase_path);
+    ESP_LOGI(TAG, "%s: %s", __func__, cJSON_PrintUnformatted(data_json));
 
-    ESP_LOGI(TAG, "%s", json_str);
-
-    if (strcmp(json_str, "null") == 0) {
-        Communicator_createFirebaseComposter();
+    if (data_json == NULL) {
+        data_json = Communicator_createFirebaseComposter();
     }
+
+    return data_json;
 }
 
-static void Communicator_createFirebaseComposter() {
+static cJSON * Communicator_createFirebaseComposter() {
     ESP_LOGI(TAG, "on %s", __func__);
 
-    char json_str[] = "{\"complete\": 0, \"days\": 0, \"humidity\": 0, \"temperature\": 0, \"mixer\": false, \"crusher\": false, \"fan\": false}";
-    db->putData(db, firebase_path, json_str);
+    cJSON * data_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data_json, "complete", 0);
+    cJSON_AddNumberToObject(data_json, "days", 0);
+    cJSON_AddNumberToObject(data_json, "humidity", 0);
+    cJSON_AddNumberToObject(data_json, "temperature", 0);
+    cJSON_AddBoolToObject(data_json, "mixer", false);
+    cJSON_AddBoolToObject(data_json, "crusher", false);
+    cJSON_AddBoolToObject(data_json, "fan", false);
+
+    if (db->putDataJson(db, firebase_path, data_json)) {
+        return NULL;
+    }
+
+    return data_json;
 }
 
-/*static void Communicator_updateSensorsParametersValues(TimerHandle_t xTimer) {
+static esp_err_t Communicator_updateSensorsParametersValues() {
     ESP_LOGI(TAG, "on %s", __func__);
 
-    JsonValue data;
-    Communicator_getFirebaseComposterData(db, &data);
+    double temperature = ComposterParameters_GetTemperature(&composterParameters);
+    double humidity = ComposterParameters_GetHumidity(&composterParameters);
+    double complete = ComposterParameters_GetComplete(&composterParameters);
 
-    // Acceder a los valores de composterParameters
-    double temperature = ComposterParameters_getTemperature(composterParameters);
-    double humidity = ComposterParameters_getHumidity(composterParameters);
-    double complete = ComposterParameters_getComplete(composterParameters);
+    ESP_LOGI(TAG, "temperature: %f", temperature);
+    ESP_LOGI(TAG, "humidity: %f", humidity);
+    ESP_LOGI(TAG, "complete: %f", complete);
 
-    // Actualizar los valores en el objeto 'data'
-    snprintf(data.data, 256, "{\"temperature\": %.2lf, \"humidity\": %.2lf, \"complete\": %.2lf}", temperature, humidity, complete);
+    cJSON * data_json = Communicator_getFirebaseComposterData();
 
-    RTDB_patchData(db, firebase_path, data.data);
-}*/
+    cJSON *temperatureField = cJSON_GetObjectItem(data_json, "temperature");
+    cJSON *humidityField = cJSON_GetObjectItem(data_json, "humidity");
+    cJSON *completeField = cJSON_GetObjectItem(data_json, "complete");
+
+    ESP_LOGI(TAG, "temperatureField: %f", cJSON_GetNumberValue(temperatureField));
+    ESP_LOGI(TAG, "humidityField: %f", cJSON_GetNumberValue(humidityField));
+    ESP_LOGI(TAG, "completeField: %f", cJSON_GetNumberValue(completeField));
+
+    if (cJSON_IsNumber(temperatureField) && cJSON_IsNumber(humidityField) && cJSON_IsNumber(completeField)) {
+        cJSON_SetNumberValue(temperatureField, temperature);
+        cJSON_SetNumberValue(humidityField, humidity);
+        cJSON_SetNumberValue(completeField, complete);
+    } else {
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "%s: %s", __func__, cJSON_PrintUnformatted(data_json));
+
+    db->putDataJson(db, firebase_path, data_json);
+
+    return ESP_OK;
+}
 
 static void Communicator_configureFirebaseConnection() {
     ESP_LOGI(TAG, "on %s", __func__);
@@ -129,7 +162,7 @@ static void timer_callback_function(TimerHandle_t xTimer) {
     ESP_LOGI(TAG, "on %s", __func__);
 
     if (wifi_connected && firebase_active_session) {
-        //Communicator_updateSensorsParametersValues(xTimer);
+        Communicator_updateSensorsParametersValues();
     }
 }
 
@@ -142,6 +175,10 @@ static void connectionTask(void* param) {
     bool first_connection = true;
 
     while (true) {
+
+        UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        ESP_LOGI(TAG, "Connection Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+
         uxBits = xEventGroupWaitBits(s_communication_event_group, CONNECTION_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
 
         if ((uxBits & CONNECTION_STATE_BIT) != (prevBits & CONNECTION_STATE_BIT)) {
@@ -175,9 +212,13 @@ static void readingChangesTask(void* param) {
     ESP_LOGI(TAG, "on %s", __func__);
 
     while (true) {
+
         if (firebase_active_session) {
-            Communicator_getFirebaseComposterData();
-            /*ESP_LOGI(TAG, "mixer: %d", data["trituradora"].asBool());
+
+            UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+            ESP_LOGI(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+            /*cJSON * data_json = Communicator_getFirebaseComposterData();
+            ESP_LOGI(TAG, "mixer: %d", data["trituradora"].asBool());
             ESP_LOGI(TAG, "crusher: %d", data["mezcladora"].asBool());
             ESP_LOGI(TAG, "fan: %d", data["fan"].asBool());
 
@@ -211,7 +252,7 @@ static void readingChangesTask(void* param) {
                 }
             }*/
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 
     vTaskDelete(NULL);
@@ -225,6 +266,10 @@ static void readingChangesTask(void* param) {
     Communicator* communicatorInstance = (Communicator*)param;
 
     while (true) {
+
+        UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        ESP_LOGI(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+
         if (communicator_state.firebase_active_session) {
             uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
             JsonValue data;
