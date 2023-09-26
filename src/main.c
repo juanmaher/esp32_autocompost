@@ -17,8 +17,8 @@ int app_main(void)
 
     ComposterParameters_Init(&composterParameters);
 
-    Wifi_start();
-    Communicator_start();
+    Wifi_Start();
+    Communicator_Start();
 
     while(true);
     return 0;
