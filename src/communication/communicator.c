@@ -18,6 +18,7 @@
 
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
+ESP_EVENT_DEFINE_BASE(FAN_EVENT);
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static const char *TAG = "AC_Communicator";
@@ -32,9 +33,8 @@ static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;
 
 static void timer_callback_function(TimerHandle_t xTimer);
-static void Communicator_event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data);
-//static void writingChangesTask(void* param);
+static void Communicator_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+static void writingChangesTask(void* param);
 static void readingChangesTask(void* param);
 static void connectionTask(void* param);
 static cJSON * Communicator_getFirebaseComposterData();
@@ -49,11 +49,12 @@ void Communicator_start() {
     s_communication_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_handler_register(MIXER_EVENT, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(FAN_EVENT, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, ESP_EVENT_ANY_ID, &Communicator_event_handler, NULL));
 
     xTaskCreate(connectionTask, "connectionTask", 8192, NULL, 3, NULL); 
     xTaskCreate(readingChangesTask, "readingChangesTask", 8192, NULL, 3, NULL);
-    //xTaskCreate(writingChangesTask, "writingChangesTask", 4096, NULL, 3, NULL);
+    xTaskCreate(writingChangesTask, "writingChangesTask", 8192, NULL, 3, NULL);
 }
 
 static cJSON * Communicator_getFirebaseComposterData() {
@@ -155,6 +156,12 @@ static void Communicator_event_handler(void* arg, esp_event_base_t event_base,
         } else if (event_id == CRUSHER_EVENT_OFF) {
             xEventGroupClearBits(s_communication_event_group, CRUSHER_STATE_BIT);
         }
+    } else if (strcmp(event_base, FAN_EVENT) == 0) {
+        if (event_id == FAN_EVENT_ON) {
+            xEventGroupSetBits(s_communication_event_group, FAN_STATE_BIT);
+        } else if (event_id == FAN_EVENT_OFF) {
+            xEventGroupClearBits(s_communication_event_group, FAN_STATE_BIT);
+        }
     }
 }
 
@@ -189,7 +196,8 @@ static void connectionTask(void* param) {
                 if (first_connection) {
                     first_connection = false;
                     Communicator_configureFirebaseConnection();
-                    communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(3000), pdTRUE, NULL, timer_callback_function);
+                    /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
+                    communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, timer_callback_function);
                 }
                 xTimerStart(communicatorTimer, portMAX_DELAY);
             } else {
@@ -217,40 +225,48 @@ static void readingChangesTask(void* param) {
 
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
             ESP_LOGI(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
-            /*cJSON * data_json = Communicator_getFirebaseComposterData();
-            ESP_LOGI(TAG, "mixer: %d", data["trituradora"].asBool());
-            ESP_LOGI(TAG, "crusher: %d", data["mezcladora"].asBool());
-            ESP_LOGI(TAG, "fan: %d", data["fan"].asBool());
 
-            if (data["mixer"].asBool() != communicatorInstance->composterParameters.getMixerState()) {
-                if (true == data["mixer"].asBool()) {
-                    ESP_LOGI(TAG, "Inicio manual de mezcladora");
-                    esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
-                } else if (false == data["mixer"].asBool()) {
-                    ESP_LOGI(TAG, "Apagado manual de mezcladora");
-                    esp_event_post(MIXER_EVENT, static_cast<int>(MIXER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
+            cJSON* data_json = Communicator_getFirebaseComposterData();
+            cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
+            cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
+            cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
+
+            if (cJSON_IsBool(mixerField) && cJSON_IsBool(crusherField) && cJSON_IsBool(fanField)) {
+                bool mixer = cJSON_IsTrue(mixerField);
+                bool crusher = cJSON_IsTrue(crusherField);
+                bool fan = cJSON_IsTrue(fanField);
+
+                if (mixer != ComposterParameters_GetMixerState(&composterParameters)) {
+                    if (mixer) {
+                        ESP_LOGI(TAG, "Inicio manual de mezcladora");
+                        esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                    } else {
+                        ESP_LOGI(TAG, "Apagado manual de mezcladora");
+                        esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
+                    }
+                }
+
+                if (crusher != ComposterParameters_GetCrusherState(&composterParameters)) {
+                    if (crusher) {
+                        ESP_LOGI(TAG, "Inicio manual de trituradora");
+                        esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                    } else {
+                        ESP_LOGI(TAG, "Apagado manual de trituradora");
+                        esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
+                    }
+                }
+
+                if (fan != ComposterParameters_GetFanState(&composterParameters)) {
+                    if (fan) {
+                        ESP_LOGI(TAG, "Apagado manual de ventilador");
+                        esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                    } else {
+                        ESP_LOGI(TAG, "Apagado manual de ventilador");
+                        esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
+                    }
                 }
             }
-
-            if (data["crusher"].asBool() != communicatorInstance->composterParameters.getCrusherState()) {
-                if (true == data["crusher"].asBool()) {
-                    ESP_LOGI(TAG, "Inicio manual de trituradora");
-                    esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_ON), nullptr, 0, portMAX_DELAY);
-                } else if (false == data["crusher"].asBool()) {
-                    ESP_LOGI(TAG, "Apagado manual de trituradora");
-                    esp_event_post(CRUSHER_EVENT, static_cast<int>(CRUSHER_EVENT_MANUAL_OFF), nullptr, 0, portMAX_DELAY);
-                }
-            }
-
-            if (data["fan"].asBool() != communicatorInstance->composterParameters.getFanState()) {
-                if (true == data["fan"].asBool()) {
-                    ESP_LOGI(TAG, "Apagado manual de ventilador");
-                    // Evento de inicio de ventilador
-                } else if (false == data["fan"].asBool()) {
-                    ESP_LOGI(TAG, "Apagado manual de ventilador");
-                    // Evento de fin de ventilador
-                }
-            }*/
+            cJSON_Delete(data_json);
         }
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
@@ -258,54 +274,53 @@ static void readingChangesTask(void* param) {
     vTaskDelete(NULL);
 }
 
-/*static void writingChangesTask(void* param) {
+static void writingChangesTask(void* param) {
     ESP_LOGI(TAG, "on %s", __func__);
 
     EventBits_t uxBits;
     EventBits_t prevBits = xEventGroupGetBits(s_communication_event_group);
-    Communicator* communicatorInstance = (Communicator*)param;
 
     while (true) {
 
-        UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-        ESP_LOGI(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+        if (firebase_active_session) {
 
-        if (communicator_state.firebase_active_session) {
-            uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-            JsonValue data;
-            Communicator_getFirebaseComposterData(&communicatorInstance->db, &data);
+            UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+            ESP_LOGI(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
-            // Detectar cambios en el bit de estado de la mezcladora
+            uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT | FAN_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+            cJSON* data_json = Communicator_getFirebaseComposterData();
+
             if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
                 ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
-                ComposterParameters_getMixerState(&communicatorInstance->composterParameters);
-                if (uxBits & MIXER_STATE_BIT) {
-                    ComposterParameters_setMixerState(&communicatorInstance->composterParameters, true);
-                } else {
-                    ComposterParameters_setMixerState(&communicatorInstance->composterParameters, false);
+                cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
+                if (cJSON_IsBool(mixerField)) {
+                    cJSON_ReplaceItemInObject(data_json, "mixer", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
                 }
-                snprintf(data.data, 256, "{\"mixer\": %s}", ComposterParameters_getMixerState(&communicatorInstance->composterParameters) ? "true" : "false");
-                RTDB_patchData(&communicatorInstance->db, firebase_path, data.data);
             }
 
-            // Detectar cambios en el bit de estado del triturador
             if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
                 ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
-                ComposterParameters_getCrusherState(&communicatorInstance->composterParameters);
-                if (uxBits & CRUSHER_STATE_BIT) {
-                    ComposterParameters_setCrusherState(&communicatorInstance->composterParameters, true);
-                } else {
-                    ComposterParameters_setCrusherState(&communicatorInstance->composterParameters, false);
+                cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
+                if (cJSON_IsBool(crusherField)) {
+                    cJSON_ReplaceItemInObject(data_json, "crusher", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
                 }
-                snprintf(data.data, 256, "{\"crusher\": %s}", ComposterParameters_getCrusherState(&communicatorInstance->composterParameters) ? "true" : "false");
-                RTDB_patchData(&communicatorInstance->db, firebase_path, data.data);
             }
 
-            // Guardar los bits actuales para la próxima iteración
+            if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
+                ESP_LOGI(TAG, "Se detecto cambio estado del ventilador");
+                cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
+                if (cJSON_IsBool(fanField)) {
+                    cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
+                }
+            }
+
+            db->patchDataJson(db, firebase_path, data_json);
+
             prevBits = uxBits;
+            cJSON_Delete(data_json);
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     vTaskDelete(NULL);
-}*/
+}

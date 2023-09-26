@@ -27,6 +27,16 @@ typedef enum {
     MIXER_EVENT_MANUAL_OFF
 } MixerEvent_t;
 
+// Definición de eventos del ventilador
+ESP_EVENT_DECLARE_BASE(FAN_EVENT);
+
+typedef enum {
+    FAN_EVENT_ON,
+    FAN_EVENT_OFF,
+    FAN_EVENT_MANUAL_ON,
+    FAN_EVENT_MANUAL_OFF
+} FanEvent_t;
+
 // Definición de eventos de la WIFI
 ESP_EVENT_DECLARE_BASE(WIFI_EVENT_INTERNAL);
 

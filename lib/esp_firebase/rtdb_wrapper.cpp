@@ -12,6 +12,7 @@ int RTDB_PutData(RTDB_t* me, const char* path, const char* json_str);
 int RTDB_PutDataJson(RTDB_t* me, const char* path, cJSON* data_json);
 int RTDB_PostData(RTDB_t* me, const char* path, const char* json_str);
 int RTDB_PatchData(RTDB_t* me, const char* path, const char* json_str);
+int RTDB_PatchDataJson(RTDB_t* me, const char* path, cJSON* data_json);
 int RTDB_DeleteData(RTDB_t* me, const char* path);
 static user_account_t convertToUserAccount(user_data_t data);
 
@@ -104,7 +105,6 @@ int RTDB_PutDataJson(RTDB_t* me, const char* path, cJSON* data_json) {
     return obj->putData(path, data_json);
 }
 
-
 int RTDB_PostData(RTDB_t* me, const char* path, const char* json_str) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     RTDB *obj;
@@ -125,6 +125,17 @@ int RTDB_PatchData(RTDB_t* me, const char* path, const char* json_str) {
 
     obj = static_cast<RTDB *>(me->obj);
     return obj->patchData(path, json_str);
+}
+
+int RTDB_PatchDataJson(RTDB_t* me, const char* path, cJSON* data_json) {
+    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+    RTDB *obj;
+    if (me == NULL) {
+        return ESP_FAIL;
+    }
+
+    obj = static_cast<RTDB *>(me->obj);
+    return obj->patchData(path, data_json);
 }
 
 int RTDB_DeleteData(RTDB_t* me, const char* path) {

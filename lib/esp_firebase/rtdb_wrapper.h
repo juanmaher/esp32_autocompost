@@ -20,6 +20,7 @@ typedef struct _RTDB_t {
     int (* const putDataJson)       (struct _RTDB_t *me, const char* path, cJSON* data_json);
     int (* const postData)          (struct _RTDB_t *me, const char* path, const char* json_str);
     int (* const patchData)         (struct _RTDB_t *me, const char* path, const char* json_str);
+    int (* const patchDataJson)     (struct _RTDB_t *me, const char* path, cJSON* data_json);
     int (* const deleteData)        (struct _RTDB_t *me, const char* path, const char* json_str);
 
     void * const obj;
