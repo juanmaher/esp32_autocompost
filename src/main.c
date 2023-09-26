@@ -6,6 +6,9 @@
 #include "common/composter_parameters.h"
 #include "communication/communicator.h"
 #include "communication/wifi.h"
+#include "actuators/crusher.h"
+#include "actuators/mixer.h"
+#include "actuators/fan.h"
 
 ComposterParameters composterParameters;
 
@@ -17,8 +20,14 @@ int app_main(void)
 
     ComposterParameters_Init(&composterParameters);
 
+    /* Start communication modules */
     Wifi_Start();
     Communicator_Start();
+
+    /* Start actuators */
+    Mixer_Start();
+    Crusher_Start();
+    Fan_Start();
 
     while(true);
     return 0;

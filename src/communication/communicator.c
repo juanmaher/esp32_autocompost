@@ -18,11 +18,6 @@
 
 #define DEBUG false
 
-ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
-ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
-ESP_EVENT_DEFINE_BASE(FAN_EVENT);
-ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
-
 static const char *TAG = "AC_Communicator";
 static const char firebase_path[] = "/composters/000002";
 
@@ -34,6 +29,8 @@ extern ComposterParameters composterParameters;
 static TimerHandle_t communicatorTimer = NULL;
 static EventGroupHandle_t s_communication_event_group;
 
+static RTDB_t * db;
+
 static void timer_callback_function(TimerHandle_t xTimer);
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void writing_changes_task(void* param);
@@ -43,9 +40,7 @@ static cJSON * get_firebase_composter_data();
 static cJSON * create_firebase_composter();
 static esp_err_t update_sensors_parameters_values();
 
-static RTDB_t * db;
-
-void Communicator_start() {
+void Communicator_Start() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     s_communication_event_group = xEventGroupCreate();
@@ -62,7 +57,7 @@ void Communicator_start() {
 static cJSON * get_firebase_composter_data() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
-    cJSON * data_json = db->getData(db, firebase_path);
+    cJSON *data_json = db->getData(db, firebase_path);
     if (DEBUG) ESP_LOGI(TAG, "%s: %s", __func__, cJSON_PrintUnformatted(data_json));
 
     if (data_json == NULL) {
@@ -75,7 +70,7 @@ static cJSON * get_firebase_composter_data() {
 static cJSON * create_firebase_composter() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
-    cJSON * data_json = cJSON_CreateObject();
+    cJSON *data_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(data_json, "complete", 0);
     cJSON_AddNumberToObject(data_json, "days", 0);
     cJSON_AddNumberToObject(data_json, "humidity", 0);
@@ -102,7 +97,7 @@ static esp_err_t update_sensors_parameters_values() {
     if (DEBUG) ESP_LOGI(TAG, "humidity: %f", humidity);
     if (DEBUG) ESP_LOGI(TAG, "complete: %f", complete);
 
-    cJSON * data_json = get_firebase_composter_data();
+    cJSON *data_json = get_firebase_composter_data();
 
     cJSON *temperatureField = cJSON_GetObjectItem(data_json, "temperature");
     cJSON *humidityField = cJSON_GetObjectItem(data_json, "humidity");
@@ -123,6 +118,8 @@ static esp_err_t update_sensors_parameters_values() {
     if (DEBUG) ESP_LOGI(TAG, "%s: %s", __func__, cJSON_PrintUnformatted(data_json));
 
     db->putDataJson(db, firebase_path, data_json);
+
+    cJSON_Delete(data_json);
 
     return ESP_OK;
 }
@@ -209,7 +206,6 @@ static void connection_task(void* param) {
             }
         }
 
-        // Guardar los bits actuales para la próxima iteración
         prevBits = uxBits;
 
         vTaskDelay(pdMS_TO_TICKS(1000));

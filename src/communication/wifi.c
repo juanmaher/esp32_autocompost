@@ -1,6 +1,5 @@
-// wifi.c
-
 #include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -9,14 +8,17 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
+
 #include "common/events.h"
 #include "communication/wifi.h"
 
-static EventGroupHandle_t s_wifi_event_group;
-static const int WIFI_CONNECTED_BIT = BIT0;
-static const int WIFI_FAIL_BIT = BIT1;
+#define DEBUG false
+
+ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static const char *TAG = "AC_Wifi";
+
+static EventGroupHandle_t s_wifi_event_group;
 
 static struct wifi_credentials {
     bool data_available;
@@ -24,11 +26,11 @@ static struct wifi_credentials {
     uint8_t password[64];
 } wifi_credentials_t;
 
-static void Wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data);
 static void smartconfig_task(void * parm);
 
-void Wifi_start() {
+void Wifi_Start() {
     ESP_LOGI(TAG, "on %s", __func__);
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -39,15 +41,15 @@ void Wifi_start() {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &Wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &Wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &Wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static void Wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
     ESP_LOGI(TAG, "on %s", __func__);
