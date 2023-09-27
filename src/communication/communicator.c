@@ -39,6 +39,7 @@ static void connection_task(void* param);
 static cJSON * get_firebase_composter_data();
 static cJSON * create_firebase_composter();
 static esp_err_t update_sensors_parameters_values();
+static void configure_firebase_connection();
 
 void Communicator_Start() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
@@ -124,7 +125,7 @@ static esp_err_t update_sensors_parameters_values() {
     return ESP_OK;
 }
 
-static void Communicator_configureFirebaseConnection() {
+static void configure_firebase_connection() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     user_data_t account = {USER_EMAIL, USER_PASSWORD};
@@ -183,9 +184,9 @@ static void connection_task(void* param) {
     while (true) {
 
         UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-        if (DEBUG) ESP_LOGI(TAG, "Connection Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+        if (DEBUG) ESP_LOGD(TAG, "Connection Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
-        uxBits = xEventGroupWaitBits(s_communication_event_group, CONNECTION_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+        uxBits = xEventGroupWaitBits(s_communication_event_group, CONNECTION_STATE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
         if ((uxBits & CONNECTION_STATE_BIT) != (prevBits & CONNECTION_STATE_BIT)) {
             ESP_LOGI(TAG, "Wi-Fi connection state has changed");
@@ -194,7 +195,7 @@ static void connection_task(void* param) {
                 wifi_connected = true;
                 if (first_connection) {
                     first_connection = false;
-                    Communicator_configureFirebaseConnection();
+                    configure_firebase_connection();
                     /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
                     communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, timer_callback_function);
                 }
@@ -222,7 +223,7 @@ static void reading_changes_task(void* param) {
         if (firebase_active_session) {
 
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-            if (DEBUG) ESP_LOGI(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+            if (DEBUG) ESP_LOGD(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
             cJSON* data_json = get_firebase_composter_data();
             cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
@@ -283,39 +284,40 @@ static void writing_changes_task(void* param) {
         if (firebase_active_session) {
 
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-            if (DEBUG) ESP_LOGI(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
+            if (DEBUG) ESP_LOGD(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
-            uxBits = xEventGroupWaitBits(s_communication_event_group, MIXER_STATE_BIT | CRUSHER_STATE_BIT | FAN_STATE_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-            cJSON* data_json = get_firebase_composter_data();
+            uxBits = xEventGroupGetBits(s_communication_event_group);
+            if (uxBits != prevBits) {
+                cJSON* data_json = get_firebase_composter_data();
 
-            if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
-                ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
-                cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
-                if (cJSON_IsBool(mixerField)) {
-                    cJSON_ReplaceItemInObject(data_json, "mixer", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
+                if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
+                    ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
+                    cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
+                    if (cJSON_IsBool(mixerField)) {
+                        cJSON_ReplaceItemInObject(data_json, "mixer", cJSON_CreateBool(uxBits & MIXER_STATE_BIT ? true : false));
+                    }
                 }
-            }
 
-            if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
-                ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
-                cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
-                if (cJSON_IsBool(crusherField)) {
-                    cJSON_ReplaceItemInObject(data_json, "crusher", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
+                if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
+                    ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
+                    cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
+                    if (cJSON_IsBool(crusherField)) {
+                        cJSON_ReplaceItemInObject(data_json, "crusher", cJSON_CreateBool(uxBits & CRUSHER_STATE_BIT ? true : false));
+                    }
                 }
-            }
 
-            if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
-                ESP_LOGI(TAG, "Se detecto cambio estado del ventilador");
-                cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
-                if (cJSON_IsBool(fanField)) {
-                    cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(ComposterParameters_GetMixerState(&composterParameters)));
+                if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
+                    ESP_LOGI(TAG, "Se detecto cambio estado del ventilador");
+                    cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
+                    if (cJSON_IsBool(fanField)) {
+                        cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(uxBits & FAN_STATE_BIT ? true : false));
+                    }
                 }
+
+                db->patchDataJson(db, firebase_path, data_json);
+                cJSON_Delete(data_json);
+                prevBits = uxBits;
             }
-
-            db->patchDataJson(db, firebase_path, data_json);
-
-            prevBits = uxBits;
-            cJSON_Delete(data_json);
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

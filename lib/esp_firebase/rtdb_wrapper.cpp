@@ -34,6 +34,7 @@ RTDB_t* RTDB_Create(const char * api_key, user_data_t account, const char* datab
         *((void **) &me->putDataJson)   = (void *) RTDB_PutDataJson;
         *((void **) &me->postData)      = (void *) RTDB_PostData;
         *((void **) &me->patchData)     = (void *) RTDB_PatchData;
+        *((void **) &me->patchDataJson) = (void *) RTDB_PatchDataJson;
         *((void **) &me->deleteData)    = (void *) RTDB_DeleteData;
     }
     return me;
