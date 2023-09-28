@@ -4,6 +4,7 @@
 #include "esp_system.h"
 
 #include "common/composter_parameters.h"
+#include "hmi/buttons.h"
 #include "communication/communicator.h"
 #include "communication/wifi.h"
 #include "actuators/crusher.h"
@@ -19,6 +20,9 @@ int app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     ComposterParameters_Init(&composterParameters);
+
+    /* Start HMI */
+    Buttons_Start();
 
     /* Start communication modules */
     Wifi_Start();
