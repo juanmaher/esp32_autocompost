@@ -8,6 +8,11 @@
 #include "sensors/HumiditySensor.h"
 #include "sensors/TemperatureSensor.h"
 
+HumiditySensor_t humiditySensor;
+TemperatureSensor_t temperatureSensor;
+CapacitySensor_t capacitySensor;
+
+
 int app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -25,15 +30,12 @@ int app_main(void)
     // crusher.start();
 
     // Declarar e inicializar una instancia de HumiditySensor_t
-    HumiditySensor_t humiditySensor;
     HumiditySensor_Init(&humiditySensor);
     HumiditySensor_Start(&humiditySensor);
 
-    TemperatureSensor_t temperatureSensor;
     TemperatureSensor_Init(&temperatureSensor);
     TemperatureSensor_Start(&temperatureSensor);
 
-    CapacitySensor_t capacitySensor;
     CapacitySensor_Init(&capacitySensor);
     CapacitySensor_Start(&capacitySensor);
 

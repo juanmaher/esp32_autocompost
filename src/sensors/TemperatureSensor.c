@@ -50,13 +50,7 @@ void TemperatureSensor_Start(TemperatureSensor_t *sensor) {
 
     ESP_ERROR_CHECK(onewire_rom_search_context_create(sensor->handle, &sensor->context_handler));
 
-    esp_err_t search_result = onewire_rom_search(sensor->context_handler);
-
-    if (search_result == ESP_ERR_INVALID_CRC) {
-        //continue;
-    } else if (search_result == ESP_FAIL || search_result == ESP_ERR_NOT_FOUND) {
-        //break;
-    }
+    //esp_err_t search_result = onewire_rom_search(sensor->context_handler);
 
     ESP_ERROR_CHECK(onewire_rom_get_number(sensor->context_handler, sensor->device_rom_id));
     ESP_LOGI(TAG, "found device with rom id " ONEWIRE_ROM_ID_STR, ONEWIRE_ROM_ID(sensor->device_rom_id));

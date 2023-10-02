@@ -12,10 +12,12 @@ static void timer_callback(TimerHandle_t pxTimer) {
 
 static void reader_task(void *pvParameter) {
     HumiditySensor_t *sensor = (HumiditySensor_t *)pvParameter;
+    EventBits_t uxBits;
+
     setDHTgpio(HUMIDITY_SENSOR_GPIO_PIN);
 
     while (1) {   
-        EventBits_t uxBits = xEventGroupWaitBits(sensor->humiditySensorEventGroup, TIMER_EXPIRED_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+        uxBits = xEventGroupWaitBits(sensor->humiditySensorEventGroup, TIMER_EXPIRED_BIT, true, false, portMAX_DELAY);
         
         if (uxBits & TIMER_EXPIRED_BIT) {
             ESP_LOGI(TAG, "Reading values:");
@@ -32,7 +34,7 @@ static void reader_task(void *pvParameter) {
 
 void HumiditySensor_Init(HumiditySensor_t *sensor) {
     sensor->humiditySensorEventGroup = xEventGroupCreate(); 
-    sensor->estableTimer = xTimerCreate("HumidiySensor_Timer", pdMS_TO_TICKS(5000), pdTRUE, (void *)sensor, timer_callback);
+    sensor->estableTimer = xTimerCreate("HumidiySensor_Timer", pdMS_TO_TICKS(5000), true, (void *)sensor, timer_callback);
 }
 
 void HumiditySensor_Start(HumiditySensor_t *sensor) {
