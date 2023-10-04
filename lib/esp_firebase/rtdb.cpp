@@ -53,7 +53,7 @@ cJSON* RTDB::getData(const char* path) {
         const char* begin = this->app->local_response_buffer;
 
         cJSON* data_json = cJSON_Parse(begin);
-        ESP_LOGI(RTDB_TAG, "Data with path=%s acquired", path);
+        if (DEBUG) ESP_LOGI(RTDB_TAG, "Data with path=%s acquired", path);
         this->app->clearHTTPBuffer();
         return data_json;
     } else {
