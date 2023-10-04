@@ -226,8 +226,8 @@ static void reading_changes_task(void* param) {
             if (DEBUG) ESP_LOGD(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
             cJSON* data_json = get_firebase_composter_data();
-            cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
-            cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
+            cJSON* mixerField = cJSON_GetObjectItem(data_json, "mezcladora");
+            cJSON* crusherField = cJSON_GetObjectItem(data_json, "trituradora");
             cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
 
             if (cJSON_IsBool(mixerField) && cJSON_IsBool(crusherField) && cJSON_IsBool(fanField)) {
@@ -292,18 +292,20 @@ static void writing_changes_task(void* param) {
 
                 if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
                     ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
-                    cJSON* mixerField = cJSON_GetObjectItem(data_json, "mixer");
+                    cJSON* mixerField = cJSON_GetObjectItem(data_json, "mezcladora");
                     if (cJSON_IsBool(mixerField)) {
-                        cJSON_ReplaceItemInObject(data_json, "mixer", cJSON_CreateBool(uxBits & MIXER_STATE_BIT ? true : false));
+                        cJSON_ReplaceItemInObject(data_json, "mezcladora", cJSON_CreateBool(uxBits & MIXER_STATE_BIT ? true : false));
                     }
+                    db->patchDataJson(db, firebase_path, data_json);
                 }
 
                 if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
                     ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
-                    cJSON* crusherField = cJSON_GetObjectItem(data_json, "crusher");
+                    cJSON* crusherField = cJSON_GetObjectItem(data_json, "trituradora");
                     if (cJSON_IsBool(crusherField)) {
-                        cJSON_ReplaceItemInObject(data_json, "crusher", cJSON_CreateBool(uxBits & CRUSHER_STATE_BIT ? true : false));
+                        cJSON_ReplaceItemInObject(data_json, "trituradora", cJSON_CreateBool(uxBits & CRUSHER_STATE_BIT ? true : false));
                     }
+                    db->patchDataJson(db, firebase_path, data_json);
                 }
 
                 if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
@@ -312,9 +314,9 @@ static void writing_changes_task(void* param) {
                     if (cJSON_IsBool(fanField)) {
                         cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(uxBits & FAN_STATE_BIT ? true : false));
                     }
+                    db->patchDataJson(db, firebase_path, data_json);
                 }
 
-                db->patchDataJson(db, firebase_path, data_json);
                 cJSON_Delete(data_json);
                 prevBits = uxBits;
             }
