@@ -5,6 +5,7 @@
 
 #include "common/composter_parameters.h"
 #include "hmi/buttons.h"
+#include "hmi/display.h"
 #include "communication/communicator.h"
 #include "communication/wifi.h"
 #include "actuators/crusher.h"
@@ -23,6 +24,7 @@ int app_main(void)
 
     /* Start HMI */
     Buttons_Start();
+    Display_Start();
 
     /* Start communication modules */
     Wifi_Start();
