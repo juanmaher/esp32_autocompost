@@ -16,13 +16,16 @@
 #include "config/firebase_config.h"
 #include "communication/communicator.h"
 
-#define DEBUG false
+#define DEBUG true
 
 static const char *TAG = "AC_Communicator";
 static const char firebase_path[] = "/composters/000002";
 
 static bool wifi_connected = false;
 static bool firebase_active_session = false;
+static bool mixer_current_state;
+static bool crusher_current_state;
+static bool fan_current_state;
 
 extern ComposterParameters composterParameters;
 
@@ -53,6 +56,10 @@ void Communicator_Start() {
     xTaskCreate(connection_task, "connection_task", 8192, NULL, 3, NULL); 
     xTaskCreate(reading_changes_task, "reading_changes_task", 8192, NULL, 3, NULL);
     xTaskCreate(writing_changes_task, "writing_changes_task", 8192, NULL, 3, NULL);
+
+    mixer_current_state = ComposterParameters_GetMixerState(&composterParameters);
+    crusher_current_state = ComposterParameters_GetCrusherState(&composterParameters);
+    fan_current_state = ComposterParameters_GetFanState(&composterParameters);
 }
 
 static cJSON * get_firebase_composter_data() {
@@ -235,39 +242,30 @@ static void reading_changes_task(void* param) {
                 bool crusher = cJSON_IsTrue(crusherField);
                 bool fan = cJSON_IsTrue(fanField);
 
-                if (mixer != ComposterParameters_GetMixerState(&composterParameters)) {
+                if (mixer != mixer_current_state) {
                     if (mixer) {
                         ESP_LOGI(TAG, "Inicio manual de mezcladora");
                         esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
-                    } else {
-                        ESP_LOGI(TAG, "Apagado manual de mezcladora");
-                        esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
                     }
                 }
 
-                if (crusher != ComposterParameters_GetCrusherState(&composterParameters)) {
+                if (crusher != crusher_current_state) {
                     if (crusher) {
                         ESP_LOGI(TAG, "Inicio manual de trituradora");
                         esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
-                    } else {
-                        ESP_LOGI(TAG, "Apagado manual de trituradora");
-                        esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
                     }
                 }
 
-                if (fan != ComposterParameters_GetFanState(&composterParameters)) {
+                if (fan != fan_current_state) {
                     if (fan) {
-                        ESP_LOGI(TAG, "Apagado manual de ventilador");
+                        ESP_LOGI(TAG, "Inicio manual de ventilador");
                         esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
-                    } else {
-                        ESP_LOGI(TAG, "Apagado manual de ventilador");
-                        esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_OFF, NULL, 0, portMAX_DELAY);
                     }
                 }
             }
             cJSON_Delete(data_json);
         }
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     vTaskDelete(NULL);
@@ -297,6 +295,7 @@ static void writing_changes_task(void* param) {
                         cJSON_ReplaceItemInObject(data_json, "mezcladora", cJSON_CreateBool(uxBits & MIXER_STATE_BIT ? true : false));
                     }
                     db->patchDataJson(db, firebase_path, data_json);
+                    mixer_current_state = uxBits & MIXER_STATE_BIT ? true : false;
                 }
 
                 if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
@@ -306,6 +305,7 @@ static void writing_changes_task(void* param) {
                         cJSON_ReplaceItemInObject(data_json, "trituradora", cJSON_CreateBool(uxBits & CRUSHER_STATE_BIT ? true : false));
                     }
                     db->patchDataJson(db, firebase_path, data_json);
+                    crusher_current_state = uxBits & CRUSHER_STATE_BIT ? true : false;
                 }
 
                 if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
@@ -315,6 +315,7 @@ static void writing_changes_task(void* param) {
                         cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(uxBits & FAN_STATE_BIT ? true : false));
                     }
                     db->patchDataJson(db, firebase_path, data_json);
+                    fan_current_state = uxBits & FAN_STATE_BIT ? true : false;
                 }
 
                 cJSON_Delete(data_json);

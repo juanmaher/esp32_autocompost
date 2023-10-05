@@ -9,6 +9,7 @@
 #include "esp_log.h"
 
 #include "common/events.h"
+#include "common/composter_parameters.h"
 #include "actuators/mixer.h"
 
 #define DEBUG false
@@ -19,6 +20,7 @@ static const char *TAG = "AC_Mixer";
 static bool mixerOn;
 
 static TimerHandle_t mixerTimer = NULL;
+extern ComposterParameters composterParameters;
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data);
@@ -45,17 +47,17 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (strcmp(event_base, MIXER_EVENT) == 0) {
         if (event_id == MIXER_EVENT_MANUAL_ON) {
             ESP_ERROR_CHECK(turn_on());
-        } else if (event_id == MIXER_EVENT_MANUAL_OFF) {
-            ESP_ERROR_CHECK(turn_off());
         }
     }
 }
 
 esp_err_t turn_on() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+
     if (!mixerOn) {
         mixerOn = true;
         xTimerStart(mixerTimer, portMAX_DELAY);
+        ComposterParameters_SetMixerState(&composterParameters, mixerOn);
         return esp_event_post(MIXER_EVENT, MIXER_EVENT_ON, NULL, 0, portMAX_DELAY);
     }
     return ESP_OK;
@@ -63,9 +65,11 @@ esp_err_t turn_on() {
 
 esp_err_t turn_off() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+
     if (mixerOn) {
         mixerOn = false;
         xTimerStop(mixerTimer, portMAX_DELAY);
+        ComposterParameters_SetMixerState(&composterParameters, mixerOn);
         return esp_event_post(MIXER_EVENT, MIXER_EVENT_OFF, NULL, 0, portMAX_DELAY);
     }
     return ESP_OK;
