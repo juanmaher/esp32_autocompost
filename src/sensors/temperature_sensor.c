@@ -1,34 +1,55 @@
 #include "sensors/temperature_sensor.h"
 
-#define TEMPERATURE_SENSOR_GPIO_PIN        GPIO_NUM_5
+#define TIMER_EXPIRED_BIT               (1 << 0)
+#define TEMPERATURE_SENSOR_GPIO_PIN     GPIO_NUM_5
+#define ESTABLE_TEMPERATURE_TIMER       6000
+#define UNSTABLE_TEMPERATURE_TIMER      1000
+#define MAX_TEMPERATURE                 30
+
 
 static const char *TAG = "AC_TemperatureSensor"; 
 
 static TemperatureSensor_t sensor;
 
+static void timer_callback(TimerHandle_t pxTimer) {
+    xEventGroupSetBits(sensor.eventGroup, TIMER_EXPIRED_BIT);
+}
+
 static void reader_task(void *pvParameter) {
+    esp_err_t err;
+    EventBits_t uxBits;
+    float temperature;
+
     while (1) {
-        esp_err_t err;
-        vTaskDelay(pdMS_TO_TICKS(200));
+        uxBits = xEventGroupWaitBits(sensor.eventGroup, TIMER_EXPIRED_BIT, true, false, portMAX_DELAY);
 
-        err = ds18b20_set_resolution(sensor.handle, NULL, DS18B20_RESOLUTION_12B);
-        if (err != ESP_OK) {
-            continue;
+        if (uxBits & TIMER_EXPIRED_BIT) {
+            err = ds18b20_set_resolution(sensor.handle, NULL, DS18B20_RESOLUTION_12B);
+            if (err != ESP_OK) {
+                continue;
+            }
+
+            err = ds18b20_trigger_temperature_conversion(sensor.handle, NULL);
+            if (err != ESP_OK) {
+                continue;
+            }
+
+            vTaskDelay(pdMS_TO_TICKS(800));
+
+            err = ds18b20_get_temperature(sensor.handle, sensor.device_rom_id, &temperature);
+            if (err != ESP_OK) {
+                continue;
+            }
+            ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
+
+            if (temperature > MAX_TEMPERATURE) {
+                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(UNSTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+            } else {
+                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+            }
         }
 
-        err = ds18b20_trigger_temperature_conversion(sensor.handle, NULL);
-        if (err != ESP_OK) {
-            continue;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(800));
-
-        float temperature;
-        err = ds18b20_get_temperature(sensor.handle, sensor.device_rom_id, &temperature);
-        if (err != ESP_OK) {
-            continue;
-        }
-        ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     ESP_ERROR_CHECK(onewire_del_bus(sensor.handle));
@@ -62,5 +83,9 @@ void TemperatureSensor_Start() {
 
     ESP_ERROR_CHECK(onewire_rom_search_context_delete(sensor.context_handler));
 
+    sensor.eventGroup = xEventGroupCreate(); 
+    sensor.estableTimer = xTimerCreate("TemperatureSensor_Timer", pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), true, NULL, timer_callback);
+
     xTaskCreate(reader_task, "TemperatureSensor_ReaderTask", 2048, NULL, 5, NULL);
+    xTimerStart(sensor.estableTimer, 0);
 }

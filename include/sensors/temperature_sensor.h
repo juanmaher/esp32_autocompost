@@ -16,6 +16,8 @@
 #include "drivers/ds18b20.h"
 
 typedef struct {
+    TimerHandle_t estableTimer;
+    EventGroupHandle_t eventGroup;
     onewire_rmt_config_t config;
     onewire_bus_handle_t handle;
     onewire_rom_search_context_handler_t context_handler;

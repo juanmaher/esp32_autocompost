@@ -18,7 +18,7 @@
 
 typedef struct {
     TimerHandle_t estableTimer;
-    EventGroupHandle_t humiditySensorEventGroup;
+    EventGroupHandle_t eventGroup;
     int timerId;
 } HumiditySensor_t;
 
