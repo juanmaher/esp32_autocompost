@@ -11,7 +11,8 @@
 #include "actuators/mixer.h"
 #include "actuators/fan.h"
 
-#include "sensors/HumiditySensor.h"
+#include "sensors/humidity_sensor.h"
+#include "sensors/temperature_sensor.h"
 
 ComposterParameters composterParameters;
 
@@ -28,6 +29,7 @@ int app_main(void)
 
     /* Start Sensors*/
     HumiditySensor_Start();
+    TemperatureSensor_Start();
 
     /* Start communication modules */
     Wifi_Start();
