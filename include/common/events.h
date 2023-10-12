@@ -45,6 +45,14 @@ typedef enum {
     WIFI_EVENT_CONNECTION_OFF
 } WifiEvent_t;
 
+// Definición de eventos de la tapa
+ESP_EVENT_DECLARE_BASE(LID_EVENT);
+
+typedef enum {
+    LID_CLOSE,
+    LID_OPEN
+} LidEvent_t;
+
 #ifdef __cplusplus
 }
 #endif

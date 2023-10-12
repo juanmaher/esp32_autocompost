@@ -11,4 +11,7 @@
 #define I2C_MASTER_GPIO_SCL     22
 #define I2C_MASTER_GPIO_SDA     21
 
+/* Lid sensor */
+#define LID_SENSOR_GPIO         26
+
 #endif // GPIOS_H

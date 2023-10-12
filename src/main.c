@@ -14,6 +14,7 @@
 
 #include "sensors/humidity_sensor.h"
 #include "sensors/temperature_sensor.h"
+#include "sensors/lid_sensor.h"
 
 ComposterParameters composterParameters;
 
@@ -30,8 +31,9 @@ int app_main(void)
     Display_Start();
 
     /* Start Sensors*/
-    HumiditySensor_Start();
-    TemperatureSensor_Start();
+    /*HumiditySensor_Start();
+    TemperatureSensor_Start();*/
+    LidSensor_Start();
 
     /* Start communication modules */
     Wifi_Start();
