@@ -36,6 +36,7 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 #include "drivers/i2cdev.h"
+#include "common/config.h"
 
 static const char *TAG = "i2cdev";
 
@@ -198,20 +199,21 @@ static esp_err_t i2c_setup_port(const i2c_dev_t *dev)
 {
     if (dev->port >= I2C_NUM_MAX) return ESP_ERR_INVALID_ARG;
 
+    esp_err_t res;
     if (!cfg_equal(&dev->cfg, &states[dev->port].config) || !states[dev->port].installed)
     {
-        ESP_LOGD(TAG, "Reconfiguring I2C driver on port %d", dev->port);
+                ESP_LOGD(TAG, "Reconfiguring I2C driver on port %d", dev->port);
         i2c_config_t temp;
         memcpy(&temp, &dev->cfg, sizeof(i2c_config_t));
         temp.mode = I2C_MODE_MASTER;
-
+        
         // Driver reinstallation
         if (states[dev->port].installed)
         {
-            i2c_driver_delete(dev->port);
+                        i2c_driver_delete(dev->port);
             states[dev->port].installed = false;
         }
-#if HELPER_TARGET_IS_ESP32
+        #if HELPER_TARGET_IS_ESP32
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
         // See https://github.com/espressif/esp-idf/issues/10163
         if ((res = i2c_driver_install(dev->port, temp.mode, 0, 0, 0)) != ESP_OK)
@@ -221,9 +223,9 @@ static esp_err_t i2c_setup_port(const i2c_dev_t *dev)
 #else
         if ((res = i2c_param_config(dev->port, &temp)) != ESP_OK)
             return res;
-        if ((res = i2c_driver_install(dev->port, temp.mode, 0, 0, 0)) != ESP_OK)
+                if ((res = i2c_driver_install(dev->port, temp.mode, 0, 0, 0)) != ESP_OK)
             return res;
-#endif
+        #endif
 #endif
 #if HELPER_TARGET_IS_ESP8266
         // Clock Stretch time, depending on CPU frequency
@@ -240,15 +242,15 @@ static esp_err_t i2c_setup_port(const i2c_dev_t *dev)
     }
 #if HELPER_TARGET_IS_ESP32
     int t;
-    if ((res = i2c_get_timeout(dev->port, &t)) != ESP_OK)
+        if ((res = i2c_get_timeout(dev->port, &t)) != ESP_OK)
         return res;
     // Timeout cannot be 0
-    uint32_t ticks = dev->timeout_ticks ? dev->timeout_ticks : I2CDEV_MAX_STRETCH_TIME;
-    if ((ticks != t) && (res = i2c_set_timeout(dev->port, ticks)) != ESP_OK)
+        uint32_t ticks = dev->timeout_ticks ? dev->timeout_ticks : I2CDEV_MAX_STRETCH_TIME;
+        if ((ticks != t) && (res = i2c_set_timeout(dev->port, ticks)) != ESP_OK)
         return res;
     ESP_LOGD(TAG, "Timeout: ticks = %" PRIu32 " (%" PRIu32 " usec) on port %d", dev->timeout_ticks, dev->timeout_ticks / 80, dev->port);
 #endif
-
+    
     return ESP_OK;
 }
 
@@ -259,7 +261,7 @@ esp_err_t i2c_dev_probe(const i2c_dev_t *dev, i2c_dev_type_t operation_type)
     SEMAPHORE_TAKE(dev->port);
 
     esp_err_t res = i2c_setup_port(dev);
-    if (res == ESP_OK)
+        if (res == ESP_OK)
     {
         i2c_cmd_handle_t cmd = i2c_cmd_link_create();
         i2c_master_start(cmd);
@@ -315,16 +317,16 @@ esp_err_t i2c_dev_write(const i2c_dev_t *dev, const void *out_reg, size_t out_re
     SEMAPHORE_TAKE(dev->port);
 
     esp_err_t res = i2c_setup_port(dev);
-    if (res == ESP_OK)
+        if (res == ESP_OK)
     {
         i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, dev->addr << 1, true);
-        if (out_reg && out_reg_size)
+                i2c_master_start(cmd);
+                i2c_master_write_byte(cmd, dev->addr << 1, true);
+                if (out_reg && out_reg_size)
             i2c_master_write(cmd, (void *)out_reg, out_reg_size, true);
-        i2c_master_write(cmd, (void *)out_data, out_size, true);
-        i2c_master_stop(cmd);
-        res = i2c_master_cmd_begin(dev->port, cmd, pdMS_TO_TICKS(I2CDEV_TIMEOUT));
+                i2c_master_write(cmd, (void *)out_data, out_size, true);
+                i2c_master_stop(cmd);
+                res = i2c_master_cmd_begin(dev->port, cmd, pdMS_TO_TICKS(I2CDEV_TIMEOUT));
         if (res != ESP_OK)
             ESP_LOGE(TAG, "Could not write to device [0x%02x at %d]: %d (%s)", dev->addr, dev->port, res, esp_err_to_name(res));
         i2c_cmd_link_delete(cmd);

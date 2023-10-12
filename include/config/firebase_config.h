@@ -1,3 +1,6 @@
+#ifndef FIREBASE_CONFIG_H
+#define FIREBASE_CONFIG_H
+
 // Wifi Credentials
 #define SSID "SSID"
 #define PASSWORD "PASSWORD"
@@ -13,3 +16,5 @@
 #define USER_PASSWORD "123456789"      // Dont add your gmail credentials. Setup users authentication in your Firebase project first
 
 #define COMPOSTER_ID "000002"
+
+#endif // FIREBASE_CONFIG_H

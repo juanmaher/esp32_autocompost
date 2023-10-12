@@ -33,6 +33,10 @@
 
 #include <esp_err.h>
 #include "drivers/pcf8574.h"
+#include "esp_log.h"
+#include "common/config.h"
+
+static const char *TAG = "pcf8574";
 
 #define I2C_FREQ_HZ 100000
 
@@ -53,11 +57,11 @@ static esp_err_t read_port(i2c_dev_t *dev, uint8_t *val)
 
 static esp_err_t write_port(i2c_dev_t *dev, uint8_t val)
 {
-    CHECK_ARG(dev);
-
+        CHECK_ARG(dev);
+    
     I2C_DEV_TAKE_MUTEX(dev);
-    I2C_DEV_CHECK(dev, i2c_dev_write(dev, NULL, 0, &val, 1));
-    I2C_DEV_GIVE_MUTEX(dev);
+        I2C_DEV_CHECK(dev, i2c_dev_write(dev, NULL, 0, &val, 1));
+        I2C_DEV_GIVE_MUTEX(dev);
 
     return ESP_OK;
 }
