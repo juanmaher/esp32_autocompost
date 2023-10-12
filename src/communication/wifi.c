@@ -18,6 +18,8 @@ ESP_EVENT_DEFINE_BASE(WIFI_EVENT_INTERNAL);
 
 static const char *TAG = "AC_Wifi";
 
+static bool wifi_connected = false;
+
 static EventGroupHandle_t s_wifi_event_group;
 
 static struct wifi_credentials {
@@ -58,7 +60,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         xTaskCreate(smartconfig_task, "smartconfig_task", 4096, NULL, 3, NULL);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_event_post(WIFI_EVENT_INTERNAL, (int)WIFI_EVENT_CONNECTION_OFF, NULL, 0, portMAX_DELAY);
+        if (wifi_connected) {
+            wifi_connected = false;
+            esp_event_post(WIFI_EVENT_INTERNAL, (int)WIFI_EVENT_CONNECTION_OFF, NULL, 0, portMAX_DELAY);
+        }
         esp_wifi_connect();
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
@@ -119,6 +124,7 @@ static void smartconfig_task(void *parm) {
         uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, true, false, portMAX_DELAY);
         if (uxBits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
+            wifi_connected = true;
             esp_event_post(WIFI_EVENT_INTERNAL, (int)WIFI_EVENT_CONNECTION_ON, NULL, 0, portMAX_DELAY);
         }
         if (uxBits & WIFI_FAIL_BIT) {
