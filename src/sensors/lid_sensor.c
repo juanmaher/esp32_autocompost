@@ -16,7 +16,7 @@
 
 #define DEBUG true
 
-#define GPIO_INPUT_IO_0         LID_SENSOR_GPIO
+#define GPIO_INPUT_IO_0         4
 #define GPIO_INPUT_PIN_SEL      (1ULL<<GPIO_INPUT_IO_0)
 #define ESP_INTR_FLAG_DEFAULT   0
 
@@ -27,7 +27,6 @@ static const char *TAG = "AC_LidSensor";
 static QueueHandle_t gpio_evt_queue = NULL;
 
 static void lid_sensor_task(void* arg);
-static void IRAM_ATTR gpio_isr_handler(void* arg);
 
 static void IRAM_ATTR gpio_isr_handler(void* arg) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
@@ -41,7 +40,7 @@ static void lid_sensor_task(void* arg) {
 
     uint32_t io_num;
     while (true) {
-        if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+        if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             if (DEBUG) ESP_LOGI(TAG, "GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
             
             if (gpio_get_level(io_num)) {
@@ -65,13 +64,17 @@ void LidSensor_Start() {
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull_down mode
-    io_conf.pull_down_en = 1;
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
+
+    //change gpio interrupt type for one pin
+    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_ANYEDGE);
 
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     //start gpio task
-    xTaskCreate(lid_sensor_task, "lid_sensor_task", 2048, NULL, 10, NULL);
+    xTaskCreate(lid_sensor_task, "lid_sensor_task", 2048, NULL, 3, NULL);
 
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);

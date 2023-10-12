@@ -4,7 +4,7 @@
 /* Buttons */
 #define CRUSHER_BUTTON_GPIO     15
 #define MIXER_BUTTON_GPIO       27
-#define FAN_BUTTON_GPIO         26
+#define FAN_BUTTON_GPIO         18
 
 /* Display */
 #define I2C_PCF8574_ADDRESS     0x27
