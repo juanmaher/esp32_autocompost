@@ -8,7 +8,6 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "driver/gpio.h"
-#include "esp_log.h"
 
 #include "common/gpios.h"
 #include "common/events.h"
@@ -29,19 +28,16 @@ static QueueHandle_t gpio_evt_queue = NULL;
 static void lid_sensor_task(void* arg);
 
 static void IRAM_ATTR gpio_isr_handler(void* arg) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
-
     uint32_t gpio_num = (uint32_t) arg;
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
 static void lid_sensor_task(void* arg) {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     uint32_t io_num;
     while (true) {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            if (DEBUG) ESP_LOGI(TAG, "GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
+            printf("GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
             
             if (gpio_get_level(io_num)) {
                 esp_event_post(LID_EVENT, LID_CLOSE, NULL, 0, portMAX_DELAY);
@@ -53,7 +49,6 @@ static void lid_sensor_task(void* arg) {
 }
 
 void LidSensor_Start() {
-    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     //zero-initialize the config structure.
     gpio_config_t io_conf = {};
@@ -63,13 +58,9 @@ void LidSensor_Start() {
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
-    //enable pull_down mode
-    io_conf.pull_down_en = 0;
+    //enable pull_up mode
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
-
-    //change gpio interrupt type for one pin
-    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_ANYEDGE);
 
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));

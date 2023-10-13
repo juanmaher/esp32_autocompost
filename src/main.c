@@ -28,7 +28,7 @@ int app_main(void)
 
     /* Start HMI */
     Buttons_Start();
-    Display_Start();
+    //Display_Start();
 
     /* Start Sensors*/
     /*HumiditySensor_Start();
