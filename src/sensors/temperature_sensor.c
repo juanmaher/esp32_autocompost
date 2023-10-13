@@ -1,7 +1,6 @@
 #include "sensors/temperature_sensor.h"
 
 #define TIMER_EXPIRED_BIT               (1 << 0)
-#define TEMPERATURE_SENSOR_GPIO_PIN     GPIO_NUM_5
 #define ESTABLE_TEMPERATURE_TIMER       6000
 #define UNSTABLE_TEMPERATURE_TIMER      1000
 #define MAX_TEMPERATURE                 30
@@ -61,7 +60,7 @@ static void reader_task(void *pvParameter) {
 void TemperatureSensor_Start() {
 
     sensor.config = (onewire_rmt_config_t){
-        .gpio_pin = TEMPERATURE_SENSOR_GPIO_PIN,
+        .gpio_pin = TEMPERATURE_SENSOR_GPIO,
         .max_rx_bytes = 10,
     };
 

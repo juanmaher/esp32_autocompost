@@ -14,6 +14,7 @@
 /* Internal includes */
 #include "drivers/onewire_bus.h"
 #include "drivers/ds18b20.h"
+#include "common/gpios.h"
 
 typedef struct {
     TimerHandle_t estableTimer;
