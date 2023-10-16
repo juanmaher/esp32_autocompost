@@ -1,7 +1,6 @@
 #include "sensors/humidity_sensor.h"
 
 #define TIMER_EXPIRED_BIT           (1 << 0)
-#define HUMIDITY_SENSOR_GPIO_PIN    GPIO_NUM_27
 #define ESTABLE_HUMIDITY_TIMER      6000
 #define UNSTABLE_HUMIDITY_TIMER     1000
 #define MAX_HUMIDITY                60
@@ -17,7 +16,7 @@ static void timer_callback(TimerHandle_t pxTimer) {
 static void reader_task(void *pvParameter) {
     EventBits_t uxBits;
     float humidity;
-    setDHTgpio(HUMIDITY_SENSOR_GPIO_PIN);
+    setDHTgpio(HUMIDITY_SENSOR_GPIO);
 
     while (1) {   
         uxBits = xEventGroupWaitBits(sensor.eventGroup, TIMER_EXPIRED_BIT, true, false, portMAX_DELAY);

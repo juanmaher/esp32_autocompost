@@ -14,6 +14,7 @@
 
 #include "sensors/humidity_sensor.h"
 #include "sensors/temperature_sensor.h"
+#include "sensors/capacity_sensor.h"
 
 ComposterParameters composterParameters;
 
@@ -27,12 +28,13 @@ int app_main(void)
 
     /* Start HMI */
     Buttons_Start();
-    Display_Start();
+    //Display_Start();
 
     /* Start Sensors*/
     HumiditySensor_Start();
     TemperatureSensor_Start();
-
+    CapacitySensor_Start();
+    
     /* Start communication modules */
     Wifi_Start();
     Communicator_Start();

@@ -13,6 +13,7 @@
 
 /* Internal includes */
 #include "common/events.h"
+#include "common/gpios.h"
 #include "drivers/DHT22.h"
 #include "driver/gpio.h"
 
