@@ -1,2 +1,2 @@
-# esp32_firebase_autocompost
+# ESP32 AutoCompost Project
  ESP32 - AutoCompost - Firebase communication
