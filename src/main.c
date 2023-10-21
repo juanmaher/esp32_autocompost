@@ -8,10 +8,10 @@
 #include "hmi/display.h"
 #include "communication/communicator.h"
 #include "communication/wifi.h"
+#include "actuators/lock.h"
 #include "actuators/crusher.h"
 #include "actuators/mixer.h"
 #include "actuators/fan.h"
-
 #include "sensors/humidity_sensor.h"
 #include "sensors/temperature_sensor.h"
 #include "sensors/lid_sensor.h"
@@ -28,7 +28,7 @@ int app_main(void)
 
     /* Start HMI */
     Buttons_Start();
-    //Display_Start();
+    Display_Start();
 
     /* Start Sensors*/
     /*HumiditySensor_Start();
@@ -40,6 +40,7 @@ int app_main(void)
     Communicator_Start();
 
     /* Start actuators */
+    Lock_Start();
     Mixer_Start();
     Crusher_Start();
     Fan_Start();

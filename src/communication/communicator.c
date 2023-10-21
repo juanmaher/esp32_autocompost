@@ -16,7 +16,9 @@
 #include "config/firebase_config.h"
 #include "communication/communicator.h"
 
-#define DEBUG true
+#define DEBUG false
+
+ESP_EVENT_DEFINE_BASE(COMMUNICATOR_EVENT);
 
 static const char *TAG = "AC_Communicator";
 static const char firebase_path[] = "/composters/000002";
@@ -244,22 +246,22 @@ static void reading_changes_task(void* param) {
 
                 if (mixer != mixer_current_state) {
                     if (mixer) {
-                        ESP_LOGI(TAG, "Inicio manual de mezcladora");
-                        esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                        ESP_LOGI(TAG, "Manual mixer start detected");
+                        esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_MIXER_MANUAL_ON, NULL, 0, portMAX_DELAY);
                     }
                 }
 
                 if (crusher != crusher_current_state) {
                     if (crusher) {
-                        ESP_LOGI(TAG, "Inicio manual de trituradora");
-                        esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                        ESP_LOGI(TAG, "Manual crusher start detected");
+                        esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_CRUSHER_MANUAL_ON, NULL, 0, portMAX_DELAY);
                     }
                 }
 
                 if (fan != fan_current_state) {
                     if (fan) {
-                        ESP_LOGI(TAG, "Inicio manual de ventilador");
-                        esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+                        ESP_LOGI(TAG, "Manual fan start detected");
+                        esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_FAN_MANUAL_ON, NULL, 0, portMAX_DELAY);
                     }
                 }
             }

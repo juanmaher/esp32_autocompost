@@ -9,6 +9,7 @@
 #include "freertos/event_groups.h"
 #include "driver/gpio.h"
 
+#include "common/composter_parameters.h"
 #include "common/gpios.h"
 #include "common/events.h"
 #include "sensors/lid_sensor.h"
@@ -19,11 +20,12 @@
 #define GPIO_INPUT_PIN_SEL      (1ULL<<GPIO_INPUT_IO_0)
 #define ESP_INTR_FLAG_DEFAULT   0
 
-ESP_EVENT_DEFINE_BASE(LID_EVENT);
-
 static const char *TAG = "AC_LidSensor";
 
 static QueueHandle_t gpio_evt_queue = NULL;
+static int current_gpio_state;
+
+extern ComposterParameters composterParameters;
 
 static void lid_sensor_task(void* arg);
 
@@ -33,23 +35,23 @@ static void IRAM_ATTR gpio_isr_handler(void* arg) {
 }
 
 static void lid_sensor_task(void* arg) {
-
     uint32_t io_num;
     while (true) {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            printf("GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
-            
-            if (gpio_get_level(io_num)) {
-                esp_event_post(LID_EVENT, LID_CLOSE, NULL, 0, portMAX_DELAY);
-            } else {
-                esp_event_post(LID_EVENT, LID_OPEN, NULL, 0, portMAX_DELAY);
+            if (current_gpio_state != gpio_get_level(io_num)) {
+                current_gpio_state = gpio_get_level(io_num);
+                if (DEBUG) printf("%s: GPIO[%"PRIu32"] intr, val: %d\n", TAG, io_num, gpio_get_level(io_num));
+                if (gpio_get_level(io_num)) {
+                    ComposterParameters_SetLidState(&composterParameters, true);
+                } else {
+                    ComposterParameters_SetLidState(&composterParameters, false);
+                }
             }
         }
     }
 }
 
 void LidSensor_Start() {
-
     //zero-initialize the config structure.
     gpio_config_t io_conf = {};
     //interrupt of rising edge
@@ -61,6 +63,13 @@ void LidSensor_Start() {
     //enable pull_up mode
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
+
+    current_gpio_state = gpio_get_level(GPIO_INPUT_IO_0);
+    if (current_gpio_state) {
+        ComposterParameters_SetLidState(&composterParameters, true);
+    } else {
+        ComposterParameters_SetLidState(&composterParameters, false);
+    }
 
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));

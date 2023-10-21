@@ -13,6 +13,8 @@ void ComposterParameters_Init(ComposterParameters *params) {
     params->mixer = false;
     params->crusher = false;
     params->fan = false;
+    params->lock = false;
+    params->lid = false;
     params->mutex = xSemaphoreCreateMutex();
 }
 
@@ -121,6 +123,36 @@ bool ComposterParameters_GetFanState(const ComposterParameters* params) {
     return result;
 }
 
+bool ComposterParameters_GetLockState(const ComposterParameters* params) {
+    bool result = false;
+    
+    if (params == NULL || params->mutex == NULL) {
+        return result;
+    }
+
+    if (xSemaphoreTake(params->mutex, portMAX_DELAY) == pdTRUE) {
+        result = params->lock;
+        xSemaphoreGive(params->mutex);
+    }
+
+    return result;
+}
+
+bool ComposterParameters_GetLidState(const ComposterParameters* params) {
+    bool result = false;
+    
+    if (params == NULL || params->mutex == NULL) {
+        return result;
+    }
+
+    if (xSemaphoreTake(params->mutex, portMAX_DELAY) == pdTRUE) {
+        result = params->lid;
+        xSemaphoreGive(params->mutex);
+    }
+
+    return result;
+}
+
 void ComposterParameters_SetComplete(ComposterParameters* params, double value) {
     if (params == NULL || params->mutex == NULL) {
         return;
@@ -194,6 +226,28 @@ void ComposterParameters_SetFanState(ComposterParameters* params, bool value) {
 
     if (xSemaphoreTake(params->mutex, portMAX_DELAY) == pdTRUE) {
         params->fan = value;
+        xSemaphoreGive(params->mutex);
+    }
+}
+
+void ComposterParameters_SetLockState(ComposterParameters* params, bool value) {
+    if (params == NULL || params->mutex == NULL) {
+        return;
+    }
+
+    if (xSemaphoreTake(params->mutex, portMAX_DELAY) == pdTRUE) {
+        params->lock = value;
+        xSemaphoreGive(params->mutex);
+    }
+}
+
+void ComposterParameters_SetLidState(ComposterParameters* params, bool value) {
+    if (params == NULL || params->mutex == NULL) {
+        return;
+    }
+
+    if (xSemaphoreTake(params->mutex, portMAX_DELAY) == pdTRUE) {
+        params->lid = value;
         xSemaphoreGive(params->mutex);
     }
 }
