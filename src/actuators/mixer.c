@@ -22,8 +22,7 @@ static bool mixerOn;
 static TimerHandle_t mixerTimer = NULL;
 extern ComposterParameters composterParameters;
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data);
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static esp_err_t turn_on();
 static esp_err_t turn_off();
 
@@ -36,7 +35,7 @@ void Mixer_Start() {
 
     mixerTimer = xTimerCreate("MixerTimer", pdMS_TO_TICKS(10000), pdTRUE, NULL, timer_callback_function);
 
-    ESP_ERROR_CHECK(esp_event_handler_register(MIXER_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_MIXER_MANUAL_ON, &event_handler, NULL));
 }
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -44,8 +43,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %ld", event_base, event_id);
 
-    if (strcmp(event_base, MIXER_EVENT) == 0) {
-        if (event_id == MIXER_EVENT_MANUAL_ON) {
+    if (strcmp(event_base, COMMUNICATOR_EVENT) == 0) {
+        if (event_id == COMMUNICATOR_EVENT_MIXER_MANUAL_ON) {
             ESP_ERROR_CHECK(turn_on());
         }
     }

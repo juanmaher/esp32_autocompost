@@ -37,7 +37,27 @@ typedef enum {
     FAN_EVENT_MANUAL_OFF
 } FanEvent_t;
 
-// Definición de eventos de la WIFI
+// Definición de eventos de la traba
+ESP_EVENT_DECLARE_BASE(LOCK_EVENT);
+
+typedef enum {
+    LOCK_EVENT_ON,
+    LOCK_EVENT_OFF,
+    LOCK_EVENT_CRUSHER_MANUAL_ON,
+    LOCK_EVENT_REQUEST_TO_CLOSE_LID,
+    LOCK_EVENT_REQUEST_TO_EMPTY_COMPOSTER
+} LockEvent_t;
+
+// Definición de eventos de Communicator
+ESP_EVENT_DECLARE_BASE(COMMUNICATOR_EVENT);
+
+typedef enum {
+    COMMUNICATOR_EVENT_MIXER_MANUAL_ON,
+    COMMUNICATOR_EVENT_CRUSHER_MANUAL_ON,
+    COMMUNICATOR_EVENT_FAN_MANUAL_ON
+} CommunicatorEvent_t;
+
+// Definición de eventos de WIFI
 ESP_EVENT_DECLARE_BASE(WIFI_EVENT_INTERNAL);
 
 typedef enum {

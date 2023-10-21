@@ -29,6 +29,8 @@ static char crusher_on_msg[] = "Crusher ON";
 static char crusher_off_msg[] = "Crusher OFF";
 static char fan_on_msg[] = "Fan ON";
 static char fan_off_msg[] = "Fan OFF";
+static char request_to_close_lid_msg[] = "Please, close the lid NOW!";
+static char request_to_empty_composter_msg[] = "Please, empty composter";
 
 extern ComposterParameters composterParameters;
 static i2c_dev_t pcf8574;
@@ -60,6 +62,9 @@ void Display_Start() {
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, WIFI_EVENT_CONNECTION_ON, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT_INTERNAL, WIFI_EVENT_CONNECTION_OFF, &event_handler, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_REQUEST_TO_CLOSE_LID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_REQUEST_TO_EMPTY_COMPOSTER, &event_handler, NULL));
 #endif
 }
 
@@ -91,6 +96,12 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             split_message(fan_on_msg, new_message[0], new_message[1]);
         } else if (event_id == FAN_EVENT_OFF) {
             split_message(fan_off_msg, new_message[0], new_message[1]);
+        }
+    } else if (strcmp(event_base, LOCK_EVENT) == 0) {
+        if (event_id == LOCK_EVENT_REQUEST_TO_CLOSE_LID) {
+            split_message(request_to_close_lid_msg, new_message[0], new_message[1]);
+        } else if (event_id == LOCK_EVENT_REQUEST_TO_EMPTY_COMPOSTER) {
+            split_message(request_to_empty_composter_msg, new_message[0], new_message[1]);
         }
     }
 

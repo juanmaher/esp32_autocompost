@@ -21,4 +21,7 @@
 #define HC_SR04_TRIG_GPIO           19
 #define HC_SR04_ECHO_GPIO           18
 
+/* Lid sensor */
+#define LID_SENSOR_GPIO         26
+
 #endif // GPIOS_H
