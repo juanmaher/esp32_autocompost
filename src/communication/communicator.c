@@ -195,28 +195,33 @@ static void connection_task(void* param) {
         UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
         if (DEBUG) ESP_LOGD(TAG, "Connection Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
-        uxBits = xEventGroupWaitBits(s_communication_event_group, CONNECTION_STATE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+        uxBits = xEventGroupGetBits(s_communication_event_group);
 
-        if ((uxBits & CONNECTION_STATE_BIT) != (prevBits & CONNECTION_STATE_BIT)) {
-            ESP_LOGI(TAG, "Wi-Fi connection state has changed");
-            if (uxBits & CONNECTION_STATE_BIT) {
-                ESP_LOGI(TAG, "Wi-Fi connection active");
-                wifi_connected = true;
-                if (first_connection) {
-                    first_connection = false;
+        if (uxBits != prevBits) {
+
+            if ((uxBits & CONNECTION_STATE_BIT) != (prevBits & CONNECTION_STATE_BIT)) {
+                ESP_LOGI(TAG, "Wi-Fi connection state has changed");
+
+                if (uxBits & CONNECTION_STATE_BIT) {
+                    ESP_LOGI(TAG, "Wi-Fi connection active");
+                    wifi_connected = true;
+                    if (first_connection) {
+                        first_connection = false;
+                        /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
+                        communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, timer_callback_function);
+                    }
                     configure_firebase_connection();
-                    /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
-                    communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, timer_callback_function);
+                    xTimerStart(communicatorTimer, portMAX_DELAY);
+                } else {
+                    ESP_LOGI(TAG, "Wi-Fi connection inactive");
+                    wifi_connected = false;
+                    firebase_active_session = false;
+                    xTimerStop(communicatorTimer, portMAX_DELAY);
                 }
-                xTimerStart(communicatorTimer, portMAX_DELAY);
-            } else {
-                ESP_LOGI(TAG, "Wi-Fi connection inactive");
-                wifi_connected = false;
-                xTimerStop(communicatorTimer, portMAX_DELAY);
             }
-        }
 
-        prevBits = uxBits;
+            prevBits = uxBits;
+        }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -229,7 +234,7 @@ static void reading_changes_task(void* param) {
 
     while (true) {
 
-        if (firebase_active_session) {
+        if (wifi_connected && firebase_active_session) {
 
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
             if (DEBUG) ESP_LOGD(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
@@ -281,7 +286,7 @@ static void writing_changes_task(void* param) {
 
     while (true) {
 
-        if (firebase_active_session) {
+        if (wifi_connected && firebase_active_session) {
 
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
             if (DEBUG) ESP_LOGD(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));

@@ -83,8 +83,8 @@ http_ret_t FirebaseApp::performRequest(const char* url, esp_http_client_method_t
     if (err != ESP_OK || status_code != 200)
     {
         ESP_LOGE(FIREBASE_APP_TAG, "Error while performing request esp_err_t code=0x%x | status_code=%d", (int)err, status_code);
-        ESP_LOGE(FIREBASE_APP_TAG, "request: url=%s \nmethod=%d \npost_field=%s", url, method, post_field.c_str());
-        ESP_LOGE(FIREBASE_APP_TAG, "response=\n%s", local_response_buffer);
+        if (DEBUG) ESP_LOGE(FIREBASE_APP_TAG, "request: url=%s \nmethod=%d \npost_field=%s", url, method, post_field.c_str());
+        if (DEBUG) ESP_LOGE(FIREBASE_APP_TAG, "response=\n%s", local_response_buffer);
     }
     return {err, status_code};
 }

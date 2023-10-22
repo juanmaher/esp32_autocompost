@@ -21,8 +21,7 @@
 static const char *TAG = "AC_Display";
 
 static char main_msg[] = "AutoCompost";
-static char welcome_msg[] = "Welcome AutoComposter!
-";
+static char welcome_msg[] = "Welcome AutoComposter!";
 static char wifi_connected_msg[] = "Wi-Fi connected";
 static char wifi_disconnected_msg[] = "Wi-Fi disconnected";
 static char mixer_on_msg[] = "Mixer ON";
