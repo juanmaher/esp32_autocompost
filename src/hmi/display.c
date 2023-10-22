@@ -21,8 +21,10 @@
 static const char *TAG = "AC_Display";
 
 static char main_msg[] = "AutoCompost";
+static char welcome_msg[] = "Welcome AutoComposter!
+";
 static char wifi_connected_msg[] = "Wi-Fi connected";
-static char wifi_disconnected_msg[] = "WiFi disconnected";
+static char wifi_disconnected_msg[] = "Wi-Fi disconnected";
 static char mixer_on_msg[] = "Mixer ON";
 static char mixer_off_msg[] = "Mixer OFF";
 static char crusher_on_msg[] = "Crusher ON";
@@ -115,11 +117,33 @@ static void split_message(const char* input, char* line1, char* line2) {
         strcpy(line1, input);
         line2[0] = '\0';  // La segunda fila está vacía
     } else {
-        // Divide el mensaje en dos filas
-        strncpy(line1, input, DISPLAY_CHAR_COLUMNS);
-        line1[DISPLAY_CHAR_COLUMNS] = '\0';
-        strncpy(line2, input + DISPLAY_CHAR_COLUMNS, DISPLAY_CHAR_COLUMNS);
-        line2[strlen(line2)] = '\0';
+        int split_pos = DISPLAY_CHAR_COLUMNS;
+        if (input[split_pos] != ' ') {
+            // Buscar la posición del último espacio antes de DISPLAY_CHAR_COLUMNS
+            while (split_pos > 0 && input[split_pos] != ' ') {
+                split_pos--;
+            }
+            if (split_pos == 0) {
+                // No se encontró un espacio antes de DISPLAY_CHAR_COLUMNS,
+                // así que cortamos en DISPLAY_CHAR_COLUMNS
+                split_pos = DISPLAY_CHAR_COLUMNS;
+            }
+        }
+
+        strncpy(line1, input, split_pos);
+        line1[split_pos] = '\0';
+
+        // Avanzar al primer carácter no procesado
+        while (input[split_pos] == ' ') {
+            split_pos++;
+        }
+
+        strcpy(line2, input + split_pos);
+
+        // Asegurarse de que la segunda línea no exceda DISPLAY_CHAR_COLUMNS
+        if (strlen(line2) > DISPLAY_CHAR_COLUMNS) {
+            line2[DISPLAY_CHAR_COLUMNS] = '\0';
+        }
     }
 }
 
@@ -160,11 +184,11 @@ void lcd_task(void *pvParameters) {
     hd44780_switch_backlight(&lcd, true);
     hd44780_clear(&lcd);
 
-    // Inicialmente, mostrar el mensaje principal
+    split_message(welcome_msg, new_message[0], new_message[1]);
     hd44780_gotoxy(&lcd, 0, 0);
-    hd44780_puts(&lcd, "Welcome ");
+    hd44780_puts(&lcd, new_message[0]);
     hd44780_gotoxy(&lcd, 0, 1);
-    hd44780_puts(&lcd, "AutoComposter!");
+    hd44780_puts(&lcd, new_message[1]);
 
     TickType_t event_start_time = 1; // Hora de inicio de visualización del mensaje de evento
 

@@ -11,7 +11,7 @@
 #include "common/composter_parameters.h"
 #include "actuators/lock.h"
 
-#define DEBUG true
+#define DEBUG false
 #define FULL_CAPACITY 90
 
 ESP_EVENT_DEFINE_BASE(LOCK_EVENT);
@@ -74,7 +74,7 @@ esp_err_t unlock() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     if (lockOn) {
-        if (ComposterParameters_GetComplete(&composterParameters) > FULL_CAPACITY) {
+        if (ComposterParameters_GetComplete(&composterParameters) < FULL_CAPACITY) {
             lockOn = false;
             ESP_LOGI(TAG, "Unlock lid");
             ComposterParameters_SetLockState(&composterParameters, lockOn);

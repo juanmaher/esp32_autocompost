@@ -14,6 +14,7 @@
 #include "actuators/fan.h"
 #include "sensors/humidity_sensor.h"
 #include "sensors/temperature_sensor.h"
+#include "sensors/capacity_sensor.h"
 #include "sensors/lid_sensor.h"
 
 ComposterParameters composterParameters;
