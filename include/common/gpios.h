@@ -1,6 +1,9 @@
 #ifndef GPIOS_H
 #define GPIOS_H
 
+#define HIGH_LEVEL                  1
+#define LOW_LEVEL                   0
+
 /* Buttons */
 #define CRUSHER_BUTTON_GPIO         35
 #define MIXER_BUTTON_GPIO           34
@@ -22,6 +25,18 @@
 #define HC_SR04_ECHO_GPIO           18
 
 /* Lid sensor */
-#define LID_SENSOR_GPIO         26
+#define LID_SENSOR_GPIO             24
+
+/* Fan */
+#define FAN_GPIO                    5
+
+/* Mixer */
+#define MIXER_GPIO                  27
+
+/* Crusher */
+#define CRUSHER_GPIO                4
+
+/* Lock */
+#define LOCK_GPIO                   22
 
 #endif // GPIOS_H

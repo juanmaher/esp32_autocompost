@@ -1,25 +1,36 @@
+#include "common/composter_parameters.h"
+#include "common/events.h"
 #include "sensors/temperature_sensor.h"
 
+#define DEBUG true
+
 #define TIMER_EXPIRED_BIT               (1 << 0)
-#define ESTABLE_TEMPERATURE_TIMER       6000
+#define STABLE_TEMPERATURE_TIMER        6000
 #define UNSTABLE_TEMPERATURE_TIMER      1000
 #define MAX_TEMPERATURE                 30
 
+ESP_EVENT_DEFINE_BASE(TEMPERATURE_EVENT);
 
-static const char *TAG = "AC_TemperatureSensor"; 
+static const char *TAG = "AC_TemperatureSensor";
 
 static TemperatureSensor_t sensor;
+extern ComposterParameters composterParameters;
+
+static void timer_callback(TimerHandle_t pxTimer);
+static void reader_task(void *pvParameter);
 
 static void timer_callback(TimerHandle_t pxTimer) {
     xEventGroupSetBits(sensor.eventGroup, TIMER_EXPIRED_BIT);
 }
 
 static void reader_task(void *pvParameter) {
+    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+
     esp_err_t err;
     EventBits_t uxBits;
     float temperature;
 
-    while (1) {
+    while (true) {
         uxBits = xEventGroupWaitBits(sensor.eventGroup, TIMER_EXPIRED_BIT, true, false, portMAX_DELAY);
 
         if (uxBits & TIMER_EXPIRED_BIT) {
@@ -39,12 +50,18 @@ static void reader_task(void *pvParameter) {
             if (err != ESP_OK) {
                 continue;
             }
-            ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
+            if (DEBUG) ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
+
+            ComposterParameters_SetTemperature(&composterParameters, temperature);
 
             if (temperature > MAX_TEMPERATURE) {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(UNSTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+                ComposterParameters_SetTemperatureState(&composterParameters, false);
+                esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_UNSTABLE, NULL, 0, portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(UNSTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
             } else {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+                ComposterParameters_SetTemperatureState(&composterParameters, true);
+                esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_STABLE, NULL, 0, portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(STABLE_TEMPERATURE_TIMER), portMAX_DELAY);
             }
         }
 
@@ -52,7 +69,7 @@ static void reader_task(void *pvParameter) {
     }
 
     ESP_ERROR_CHECK(onewire_del_bus(sensor.handle));
-    ESP_LOGI(TAG, "1-wire bus deleted");
+    if (DEBUG) ESP_LOGI(TAG, "1-wire bus deleted");
 
     vTaskDelete(NULL);
 }
@@ -65,7 +82,7 @@ void TemperatureSensor_Start() {
     };
 
     ESP_ERROR_CHECK(onewire_new_bus_rmt(&sensor.config, &sensor.handle));
-    ESP_LOGI(TAG, "1-wire bus installed");
+    if (DEBUG) ESP_LOGI(TAG, "1-wire bus installed");
 
     ESP_ERROR_CHECK(onewire_rom_search_context_create(sensor.handle, &sensor.context_handler));
 
@@ -78,13 +95,13 @@ void TemperatureSensor_Start() {
     }
 
     ESP_ERROR_CHECK(onewire_rom_get_number(sensor.context_handler, sensor.device_rom_id));
-    ESP_LOGI(TAG, "found device with rom id " ONEWIRE_ROM_ID_STR, ONEWIRE_ROM_ID(sensor.device_rom_id));
+    if (DEBUG) ESP_LOGI(TAG, "found device with rom id " ONEWIRE_ROM_ID_STR, ONEWIRE_ROM_ID(sensor.device_rom_id));
 
     ESP_ERROR_CHECK(onewire_rom_search_context_delete(sensor.context_handler));
 
     sensor.eventGroup = xEventGroupCreate(); 
-    sensor.estableTimer = xTimerCreate("TemperatureSensor_Timer", pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), true, NULL, timer_callback);
+    sensor.stableTimer = xTimerCreate("TemperatureSensor_Timer", pdMS_TO_TICKS(STABLE_TEMPERATURE_TIMER), true, NULL, timer_callback);
 
     xTaskCreate(reader_task, "TemperatureSensor_ReaderTask", 2048, NULL, 5, NULL);
-    xTimerStart(sensor.estableTimer, 0);
+    xTimerStart(sensor.stableTimer, 0);
 }

@@ -65,6 +65,30 @@ typedef enum {
     WIFI_EVENT_CONNECTION_OFF
 } WifiEvent_t;
 
+// Definición de eventos de parameters
+ESP_EVENT_DECLARE_BASE(PARAMETERS_EVENT);
+
+typedef enum {
+    PARAMETERS_EVENT_STABLE,
+    PARAMETERS_EVENT_UNSTABLE
+} ParametersEvent_t;
+
+// Definición de eventos de humedad
+ESP_EVENT_DECLARE_BASE(HUMIDITY_EVENT);
+
+typedef enum {
+    HUMIDITY_EVENT_STABLE,
+    HUMIDITY_EVENT_UNSTABLE
+} HumidityEvent_t;
+
+// Definición de eventos de temperatura
+ESP_EVENT_DECLARE_BASE(TEMPERATURE_EVENT);
+
+typedef enum {
+    TEMPERATURE_EVENT_STABLE,
+    TEMPERATURE_EVENT_UNSTABLE
+} TemperatureEvent_t;
+
 #ifdef __cplusplus
 }
 #endif
