@@ -18,7 +18,7 @@
 #include "driver/gpio.h"
 
 typedef struct {
-    TimerHandle_t estableTimer;
+    TimerHandle_t stableTimer;
     EventGroupHandle_t eventGroup;
     int timerId;
 } HumiditySensor_t;
