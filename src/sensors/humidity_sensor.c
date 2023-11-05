@@ -16,11 +16,11 @@ static const char *TAG = "AC_HumiditySensor";
 static HumiditySensor_t sensor;
 extern ComposterParameters composterParameters;
 
-static int sensorFailures = 0;
+static int sensor_failures = 0;
 
 static void timer_callback(TimerHandle_t pxTimer);
 static void reader_task(void *pvParameter);
-void resetSensor();
+void reset_humidity_sensor();
 
 static void timer_callback(TimerHandle_t pxTimer) {
     xEventGroupSetBits(sensor.eventGroup, TIMER_EXPIRED_BIT);
@@ -42,9 +42,9 @@ static void reader_task(void *pvParameter) {
 
             if (ret != DHT_OK) {
                 errorHandler(ret);
-                sensorFailures++;
-                if (sensorFailures >= 5) {
-                    resetSensor();
+                sensor_failures++;
+                if (sensor_failures >= 5) {
+                    reset_humidity_sensor();
                 }
                 continue;
             }
@@ -80,7 +80,7 @@ void HumiditySensor_Start() {
     xTimerStart(sensor.stableTimer, 0);
 }
 
-void resetSensor() {
+void reset_humidity_sensor() {
     setDHTgpio(HUMIDITY_SENSOR_GPIO);
-    sensorFailures = 0;
+    sensor_failures = 0;
 }
