@@ -17,7 +17,7 @@
 #include "common/gpios.h"
 
 typedef struct {
-    TimerHandle_t estableTimer;
+    TimerHandle_t stableTimer;
     EventGroupHandle_t eventGroup;
     onewire_rmt_config_t config;
     onewire_bus_handle_t handle;

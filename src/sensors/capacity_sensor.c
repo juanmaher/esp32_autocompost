@@ -1,5 +1,8 @@
 #include "sensors/capacity_sensor.h"
 
+#define SENSOR_TRIG_GPIO    HC_SR04_TRIG_GPIO
+#define SENSOR_ECHO_GPIO    HC_SR04_ECHO_GPIO
+
 const static char *TAG = "AC_CapacitySensor";
 
 static CapacitySensor_t sensor;
@@ -29,9 +32,9 @@ static bool hc_sr04_echo_callback(mcpwm_cap_channel_handle_t cap_chan, const mcp
 
 
 static void gen_trig_output(void) {
-    gpio_set_level(HC_SR04_TRIG_GPIO, 1); // set high0
+    gpio_set_level(SENSOR_TRIG_GPIO, 1); // set high0
     esp_rom_delay_us(10);
-    gpio_set_level(HC_SR04_TRIG_GPIO, 0); // set low
+    gpio_set_level(SENSOR_TRIG_GPIO, 0); // set low
 }
 
 static void capacity_measurement_task(void *pvParameters) {
@@ -71,7 +74,7 @@ void CapacitySensor_Start() {
     };
 
     sensor.cap_ch_conf = (mcpwm_capture_channel_config_t){
-        .gpio_num = HC_SR04_ECHO_GPIO,
+        .gpio_num = SENSOR_ECHO_GPIO,
         .prescale = 1,
         .flags.neg_edge = true,
         .flags.pos_edge = true,
@@ -80,7 +83,7 @@ void CapacitySensor_Start() {
 
     sensor.io_conf = (gpio_config_t){
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = 1ULL << HC_SR04_TRIG_GPIO,
+        .pin_bit_mask = 1ULL << SENSOR_TRIG_GPIO,
     };
 
     ESP_LOGI(TAG, "Install capture timer");
@@ -91,7 +94,7 @@ void CapacitySensor_Start() {
 
     ESP_LOGI(TAG, "Configure Trig pin");
     ESP_ERROR_CHECK(gpio_config(&sensor.io_conf));
-    ESP_ERROR_CHECK(gpio_set_level(HC_SR04_TRIG_GPIO, 0));
+    ESP_ERROR_CHECK(gpio_set_level(SENSOR_TRIG_GPIO, 0));
 
     xTaskCreate(capacity_measurement_task, "capacity_task", 4096, NULL, 5, NULL);
 }
