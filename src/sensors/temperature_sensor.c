@@ -1,7 +1,7 @@
 #include "sensors/temperature_sensor.h"
 
 #define TIMER_EXPIRED_BIT               (1 << 0)
-#define ESTABLE_TEMPERATURE_TIMER       6000
+#define STABLE_TEMPERATURE_TIMER       6000
 #define UNSTABLE_TEMPERATURE_TIMER      1000
 #define MAX_TEMPERATURE                 30
 
@@ -42,9 +42,9 @@ static void reader_task(void *pvParameter) {
             ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
 
             if (temperature > MAX_TEMPERATURE) {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(UNSTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(UNSTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
             } else {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(STABLE_TEMPERATURE_TIMER), portMAX_DELAY);
             }
         }
 
@@ -83,8 +83,8 @@ void TemperatureSensor_Start() {
     ESP_ERROR_CHECK(onewire_rom_search_context_delete(sensor.context_handler));
 
     sensor.eventGroup = xEventGroupCreate(); 
-    sensor.estableTimer = xTimerCreate("TemperatureSensor_Timer", pdMS_TO_TICKS(ESTABLE_TEMPERATURE_TIMER), true, NULL, timer_callback);
+    sensor.stableTimer = xTimerCreate("TemperatureSensor_Timer", pdMS_TO_TICKS(STABLE_TEMPERATURE_TIMER), true, NULL, timer_callback);
 
     xTaskCreate(reader_task, "TemperatureSensor_ReaderTask", 2048, NULL, 5, NULL);
-    xTimerStart(sensor.estableTimer, 0);
+    xTimerStart(sensor.stableTimer, 0);
 }

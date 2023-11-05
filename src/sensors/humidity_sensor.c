@@ -1,7 +1,7 @@
 #include "sensors/humidity_sensor.h"
 
 #define TIMER_EXPIRED_BIT           (1 << 0)
-#define ESTABLE_HUMIDITY_TIMER      6000
+#define STABLE_HUMIDITY_TIMER      6000
 #define UNSTABLE_HUMIDITY_TIMER     1000
 #define MAX_HUMIDITY                60
 
@@ -31,9 +31,9 @@ static void reader_task(void *pvParameter) {
             //ESP_LOGI(TAG,"Temperature %.2f degC", getTemperature());
 
             if (humidity > MAX_HUMIDITY) {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(UNSTABLE_HUMIDITY_TIMER), portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(UNSTABLE_HUMIDITY_TIMER), portMAX_DELAY);
             } else {
-                xTimerChangePeriod(sensor.estableTimer, pdMS_TO_TICKS(ESTABLE_HUMIDITY_TIMER), portMAX_DELAY);
+                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(STABLE_HUMIDITY_TIMER), portMAX_DELAY);
             }
         }
 
@@ -44,7 +44,7 @@ static void reader_task(void *pvParameter) {
 
 void HumiditySensor_Start() {
     sensor.eventGroup = xEventGroupCreate(); 
-    sensor.estableTimer = xTimerCreate("HumidiySensor_Timer", pdMS_TO_TICKS(ESTABLE_HUMIDITY_TIMER), true, NULL, timer_callback);
+    sensor.stableTimer = xTimerCreate("HumidiySensor_Timer", pdMS_TO_TICKS(STABLE_HUMIDITY_TIMER), true, NULL, timer_callback);
     xTaskCreate(reader_task, "HumiditySensor_ReaderTask", 2048, NULL, 4, NULL);
-    xTimerStart(sensor.estableTimer, 0);
+    xTimerStart(sensor.stableTimer, 0);
 }

@@ -16,7 +16,7 @@
 
 #define DEBUG true
 
-#define GPIO_INPUT_IO_0         4
+#define GPIO_INPUT_IO_0         LID_SENSOR_GPIO
 #define GPIO_INPUT_PIN_SEL      (1ULL<<GPIO_INPUT_IO_0)
 #define ESP_INTR_FLAG_DEFAULT   0
 
@@ -56,7 +56,7 @@ void LidSensor_Start() {
     gpio_config_t io_conf = {};
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    //bit mask of the pins, use GPIO4 here
+    //bit mask of the pins, use GPIO34 here
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
