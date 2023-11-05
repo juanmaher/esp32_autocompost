@@ -36,16 +36,20 @@ void Crusher_Start() {
     crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(10000), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_CRUSHER_MANUAL_ON, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(LID_EVENT, LID_EVENT_OPENED, &event_handler, NULL));
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data) {
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %ld", event_base, event_id);
 
     if (strcmp(event_base, LOCK_EVENT) == 0) {
         if (event_id == LOCK_EVENT_CRUSHER_MANUAL_ON) {
             ESP_ERROR_CHECK(turn_on());
+        }
+    } else if (strcmp(event_base, LID_EVENT) == 0) {
+        if (event_id == LID_EVENT_OPENED) {
+            ESP_ERROR_CHECK(turn_off());
         }
     }
 }
@@ -83,7 +87,5 @@ static void timer_callback_function(TimerHandle_t xTimer) {
 
     if (crusherOn) {
         ESP_ERROR_CHECK(turn_off());
-    } else {
-        ESP_ERROR_CHECK(turn_on());
     }
 }

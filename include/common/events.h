@@ -48,6 +48,14 @@ typedef enum {
     LOCK_EVENT_REQUEST_TO_EMPTY_COMPOSTER
 } LockEvent_t;
 
+// Definición de eventos del sensor de tapa
+ESP_EVENT_DECLARE_BASE(LID_EVENT);
+
+typedef enum {
+    LID_EVENT_OPENED,
+    LID_EVENT_CLOSED
+} LidEvent_t;
+
 // Definición de eventos de Communicator
 ESP_EVENT_DECLARE_BASE(COMMUNICATOR_EVENT);
 

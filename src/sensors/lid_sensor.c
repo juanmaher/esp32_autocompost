@@ -14,7 +14,9 @@
 #include "common/events.h"
 #include "sensors/lid_sensor.h"
 
-#define DEBUG true
+#define DEBUG false
+
+ESP_EVENT_DEFINE_BASE(LID_EVENT);
 
 #define GPIO_INPUT_IO_0         4
 #define GPIO_INPUT_PIN_SEL      (1ULL<<GPIO_INPUT_IO_0)
@@ -43,7 +45,9 @@ static void lid_sensor_task(void* arg) {
                 if (DEBUG) printf("%s: GPIO[%"PRIu32"] intr, val: %d\n", TAG, io_num, gpio_get_level(io_num));
                 if (gpio_get_level(io_num)) {
                     ComposterParameters_SetLidState(&composterParameters, true);
+                    ESP_ERROR_CHECK(esp_event_post(LID_EVENT, LID_EVENT_OPENED, NULL, 0, portMAX_DELAY));
                 } else {
+                    ESP_ERROR_CHECK(esp_event_post(LID_EVENT, LID_EVENT_CLOSED, NULL, 0, portMAX_DELAY));
                     ComposterParameters_SetLidState(&composterParameters, false);
                 }
             }
