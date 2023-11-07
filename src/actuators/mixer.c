@@ -16,6 +16,9 @@
 
 #define DEBUG false
 
+#define RUTINE_MIXING_TIMER_MS      6 * 60 * 60 * 1000 /* 21600000 ms */
+#define START_MIXER_TIMER_MS        2 * 60 * 1000
+
 ESP_EVENT_DEFINE_BASE(MIXER_EVENT);
 
 static const char *TAG = "AC_Mixer";
@@ -37,9 +40,8 @@ void Mixer_Start() {
 
     mixerOn = false;
 
-    /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
-    rutineMixingTimer = xTimerCreate("rutineMixingTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, rutine_mixing_timer_callback);
-    startMixerTimer = xTimerCreate("startMixerTimer", pdMS_TO_TICKS(2000), pdTRUE, NULL, start_mixer_timer_callback);
+    rutineMixingTimer = xTimerCreate("rutineMixingTimer", pdMS_TO_TICKS(RUTINE_MIXING_TIMER_MS), pdTRUE, NULL, rutine_mixing_timer_callback);
+    startMixerTimer = xTimerCreate("startMixerTimer", pdMS_TO_TICKS(START_MIXER_TIMER_MS), pdTRUE, NULL, start_mixer_timer_callback);
 
     ESP_ERROR_CHECK(esp_event_handler_register(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_MIXER_MANUAL_ON, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(PARAMETERS_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));

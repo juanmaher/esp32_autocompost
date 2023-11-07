@@ -53,7 +53,8 @@ ESP_EVENT_DECLARE_BASE(LID_EVENT);
 
 typedef enum {
     LID_EVENT_OPENED,
-    LID_EVENT_CLOSED
+    LID_EVENT_CLOSED,
+    LID_EVENT_REQUEST_TO_CLOSE_LID
 } LidEvent_t;
 
 // Definición de eventos de Communicator

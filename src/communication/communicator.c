@@ -18,6 +18,8 @@
 
 #define DEBUG false
 
+#define RUTINE_COMMUNICATOR_TIMER_MS      6 * 60 * 60 * 1000 /* 21600000 ms */
+
 ESP_EVENT_DEFINE_BASE(COMMUNICATOR_EVENT);
 
 static const char *TAG = "AC_Communicator";
@@ -206,8 +208,7 @@ static void connection_task(void* param) {
                     wifi_connected = true;
                     if (first_connection) {
                         first_connection = false;
-                        /* 6 hours = 6 * 60 * 60 * 1000 = 21600000 ms*/
-                        communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(21600000), pdTRUE, NULL, timer_callback_function);
+                        communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(RUTINE_COMMUNICATOR_TIMER_MS), pdTRUE, NULL, timer_callback_function);
                     }
                     configure_firebase_connection();
                     xTimerStart(communicatorTimer, portMAX_DELAY);

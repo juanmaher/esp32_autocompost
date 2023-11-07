@@ -10,6 +10,9 @@
 #include "driver/gpio.h"
 #include "common/gpios.h"
 
+#define MAX_CAPACITY                10.0
+#define MIN_CAPACITY                30.0
+
 typedef struct {
     mcpwm_cap_channel_handle_t cap_chan;
     mcpwm_capture_event_callbacks_t cbs;

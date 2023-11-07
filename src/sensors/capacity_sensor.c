@@ -8,8 +8,6 @@
 
 #define DEBUG true
 
-#define MAX_CAPACITY                10.0
-#define MIN_CAPACITY                30.0
 #define TIMER_EXPIRED_BIT           BIT0
 #define MIXER_OFF_BIT               BIT1
 #define FULL_CAPACITY_TIMER_MS      1 * 60 * 1000

@@ -16,6 +16,8 @@
 
 #define DEBUG false
 
+#define START_CRUSHER_TIMER_MS        2 * 60 * 1000
+
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 
 static const char *TAG = "AC_Crusher";
@@ -35,7 +37,7 @@ void Crusher_Start() {
 
     crusherOn = false;
 
-    crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(10000), pdTRUE, NULL, timer_callback_function);
+    crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(START_CRUSHER_TIMER_MS), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_CRUSHER_MANUAL_ON, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(LID_EVENT, LID_EVENT_OPENED, &event_handler, NULL));
