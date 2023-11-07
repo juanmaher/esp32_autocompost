@@ -2,6 +2,7 @@
 #define CAPACITYSENSOR_H
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_private/esp_clk.h"
@@ -17,6 +18,9 @@ typedef struct {
     mcpwm_capture_timer_config_t cap_conf;
     mcpwm_capture_channel_config_t cap_ch_conf;
     gpio_config_t io_conf;
+    TimerHandle_t fullTimer;
+    EventGroupHandle_t eventGroup;
+    int timerId;
 } CapacitySensor_t;
 
 void CapacitySensor_Start();

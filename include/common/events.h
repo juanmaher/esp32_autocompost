@@ -97,6 +97,15 @@ typedef enum {
     TEMPERATURE_EVENT_UNSTABLE
 } TemperatureEvent_t;
 
+// Definición de eventos de capacidad
+ESP_EVENT_DECLARE_BASE(CAPACITY_EVENT);
+
+typedef enum {
+    CAPACITY_EVENT_EMPTY,
+    CAPACITY_EVENT_PARTIAL,
+    CAPACITY_EVENT_FULL
+} CapaciityEvent_t;
+
 #ifdef __cplusplus
 }
 #endif

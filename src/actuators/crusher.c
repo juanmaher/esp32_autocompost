@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -10,6 +11,7 @@
 
 #include "common/events.h"
 #include "common/composter_parameters.h"
+#include "common/gpios.h"
 #include "actuators/crusher.h"
 
 #define DEBUG false
@@ -60,6 +62,7 @@ esp_err_t turn_on() {
     if (!crusherOn) {
         if (ComposterParameters_GetLockState(&composterParameters)) {
             crusherOn = true;
+            gpio_set_level(CRUSHER_GPIO, HIGH_LEVEL);
             xTimerStart(crusherTimer, portMAX_DELAY);
             ComposterParameters_SetCrusherState(&composterParameters, crusherOn);
             return esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_ON, NULL, 0, portMAX_DELAY);
@@ -75,6 +78,7 @@ esp_err_t turn_off() {
 
     if (crusherOn) {
         crusherOn = false;
+        gpio_set_level(CRUSHER_GPIO, LOW_LEVEL);
         xTimerStop(crusherTimer, portMAX_DELAY);
         ComposterParameters_SetCrusherState(&composterParameters, crusherOn);
         return esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_OFF, NULL, 0, portMAX_DELAY);
