@@ -1,6 +1,9 @@
 #ifndef GPIOS_H
 #define GPIOS_H
 
+#define HIGH_LEVEL                  1
+#define LOW_LEVEL                   0
+
 /* Buttons */
 #define CRUSHER_BUTTON_GPIO         4
 #define MIXER_BUTTON_GPIO           23

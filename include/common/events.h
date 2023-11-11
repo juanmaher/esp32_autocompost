@@ -48,6 +48,15 @@ typedef enum {
     LOCK_EVENT_REQUEST_TO_EMPTY_COMPOSTER
 } LockEvent_t;
 
+// Definición de eventos del sensor de tapa
+ESP_EVENT_DECLARE_BASE(LID_EVENT);
+
+typedef enum {
+    LID_EVENT_OPENED,
+    LID_EVENT_CLOSED,
+    LID_EVENT_REQUEST_TO_CLOSE_LID
+} LidEvent_t;
+
 // Definición de eventos de Communicator
 ESP_EVENT_DECLARE_BASE(COMMUNICATOR_EVENT);
 
@@ -64,6 +73,39 @@ typedef enum {
     WIFI_EVENT_CONNECTION_ON,
     WIFI_EVENT_CONNECTION_OFF
 } WifiEvent_t;
+
+// Definición de eventos de parameters
+ESP_EVENT_DECLARE_BASE(PARAMETERS_EVENT);
+
+typedef enum {
+    PARAMETERS_EVENT_STABLE,
+    PARAMETERS_EVENT_UNSTABLE
+} ParametersEvent_t;
+
+// Definición de eventos de humedad
+ESP_EVENT_DECLARE_BASE(HUMIDITY_EVENT);
+
+typedef enum {
+    HUMIDITY_EVENT_STABLE,
+    HUMIDITY_EVENT_UNSTABLE
+} HumidityEvent_t;
+
+// Definición de eventos de temperatura
+ESP_EVENT_DECLARE_BASE(TEMPERATURE_EVENT);
+
+typedef enum {
+    TEMPERATURE_EVENT_STABLE,
+    TEMPERATURE_EVENT_UNSTABLE
+} TemperatureEvent_t;
+
+// Definición de eventos de capacidad
+ESP_EVENT_DECLARE_BASE(CAPACITY_EVENT);
+
+typedef enum {
+    CAPACITY_EVENT_EMPTY,
+    CAPACITY_EVENT_PARTIAL,
+    CAPACITY_EVENT_FULL
+} CapaciityEvent_t;
 
 #ifdef __cplusplus
 }

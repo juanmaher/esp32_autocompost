@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -10,9 +11,12 @@
 
 #include "common/events.h"
 #include "common/composter_parameters.h"
+#include "common/gpios.h"
 #include "actuators/crusher.h"
 
 #define DEBUG false
+
+#define START_CRUSHER_TIMER_MS        2 * 60 * 1000
 
 ESP_EVENT_DEFINE_BASE(CRUSHER_EVENT);
 
@@ -33,19 +37,23 @@ void Crusher_Start() {
 
     crusherOn = false;
 
-    crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(10000), pdTRUE, NULL, timer_callback_function);
+    crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(START_CRUSHER_TIMER_MS), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_CRUSHER_MANUAL_ON, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(LID_EVENT, LID_EVENT_OPENED, &event_handler, NULL));
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data) {
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %ld", event_base, event_id);
 
     if (strcmp(event_base, LOCK_EVENT) == 0) {
         if (event_id == LOCK_EVENT_CRUSHER_MANUAL_ON) {
             ESP_ERROR_CHECK(turn_on());
+        }
+    } else if (strcmp(event_base, LID_EVENT) == 0) {
+        if (event_id == LID_EVENT_OPENED) {
+            ESP_ERROR_CHECK(turn_off());
         }
     }
 }
@@ -56,6 +64,7 @@ esp_err_t turn_on() {
     if (!crusherOn) {
         if (ComposterParameters_GetLockState(&composterParameters)) {
             crusherOn = true;
+            gpio_set_level(CRUSHER_GPIO, HIGH_LEVEL);
             xTimerStart(crusherTimer, portMAX_DELAY);
             ComposterParameters_SetCrusherState(&composterParameters, crusherOn);
             return esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_ON, NULL, 0, portMAX_DELAY);
@@ -71,6 +80,7 @@ esp_err_t turn_off() {
 
     if (crusherOn) {
         crusherOn = false;
+        gpio_set_level(CRUSHER_GPIO, LOW_LEVEL);
         xTimerStop(crusherTimer, portMAX_DELAY);
         ComposterParameters_SetCrusherState(&composterParameters, crusherOn);
         return esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_OFF, NULL, 0, portMAX_DELAY);
@@ -83,7 +93,5 @@ static void timer_callback_function(TimerHandle_t xTimer) {
 
     if (crusherOn) {
         ESP_ERROR_CHECK(turn_off());
-    } else {
-        ESP_ERROR_CHECK(turn_on());
     }
 }
