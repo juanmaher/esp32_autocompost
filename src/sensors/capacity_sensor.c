@@ -117,8 +117,6 @@ static void capacity_measurement_task(void *pvParameters) {
                 capacity_value = (float)pulse_width_us / 58; // Modificar para calcular el valor de la capacidad
                 if (DEBUG) ESP_LOGI(TAG, "Measured capacity: %.2f", capacity_value);
 
-                ComposterParameters_SetComplete(&composterParameters, capacity_value);
-
                 if (capacity_value < MAX_CAPACITY) {
                     current_capacity_state = FULL;
                 } else if (capacity_value > MIN_CAPACITY) {
@@ -146,6 +144,16 @@ static void capacity_measurement_task(void *pvParameters) {
                             break;
                     }
                 }
+
+                float percentage = 100 * capacity_value / 32;
+
+                if (percentage < 0) {
+                    percentage = 0;
+                } else if (percentage > 100) {
+                    percentage = 100;
+                }
+
+                ComposterParameters_SetComplete(&composterParameters, percentage);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1000));

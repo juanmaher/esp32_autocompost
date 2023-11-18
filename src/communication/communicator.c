@@ -120,9 +120,9 @@ static esp_err_t update_sensors_parameters_values() {
     if (DEBUG) ESP_LOGI(TAG, "completeField: %f", cJSON_GetNumberValue(completeField));
 
     if (cJSON_IsNumber(temperatureField) && cJSON_IsNumber(humidityField) && cJSON_IsNumber(completeField)) {
-        cJSON_SetNumberValue(temperatureField, temperature);
-        cJSON_SetNumberValue(humidityField, humidity);
-        cJSON_SetNumberValue(completeField, complete);
+        cJSON_SetNumberValue(temperatureField, (int) temperature);
+        cJSON_SetNumberValue(humidityField, (int) humidity);
+        cJSON_SetNumberValue(completeField, (int) complete);
     } else {
         return ESP_FAIL;
     }

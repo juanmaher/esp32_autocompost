@@ -89,7 +89,7 @@ static esp_err_t unlock() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     if (lockOn) {
-        if (ComposterParameters_GetComplete(&composterParameters) < MAX_CAPACITY || 
+        if (ComposterParameters_GetComplete(&composterParameters) < MAX_CAPACITY_PERCENT || 
                 ComposterParameters_GetCrusherState(&composterParameters)) {
             lockOn = false;
             ESP_LOGI(TAG, "Unlock lid");

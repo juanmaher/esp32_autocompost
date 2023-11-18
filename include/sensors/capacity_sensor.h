@@ -10,8 +10,10 @@
 #include "driver/gpio.h"
 #include "common/gpios.h"
 
-#define MAX_CAPACITY                10.0
-#define MIN_CAPACITY                30.0
+#define MAX_CAPACITY_FLOAT                10.0
+#define MAX_CAPACITY_PERCENT              0.1
+#define MIN_CAPACITY_FLOAT                30.0
+#define MIN_CAPACITY_PERCENT              0.9
 
 typedef struct {
     mcpwm_cap_channel_handle_t cap_chan;
