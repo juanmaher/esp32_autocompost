@@ -117,9 +117,9 @@ static void capacity_measurement_task(void *pvParameters) {
                 capacity_value = (float)pulse_width_us / 58; // Modificar para calcular el valor de la capacidad
                 if (DEBUG) ESP_LOGI(TAG, "Measured capacity: %.2f", capacity_value);
 
-                if (capacity_value < MAX_CAPACITY) {
+                if (capacity_value < MAX_CAPACITY_FLOAT) {
                     current_capacity_state = FULL;
-                } else if (capacity_value > MIN_CAPACITY) {
+                } else if (capacity_value > MIN_CAPACITY_FLOAT) {
                     current_capacity_state = EMPTY;
                 } else {
                     current_capacity_state = PARTIAL;
