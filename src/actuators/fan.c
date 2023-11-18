@@ -34,6 +34,15 @@ void Fan_Start() {
 
     fanOn = false;
 
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL<<FAN_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+    gpio_config(&io_conf);
+
     fanTimer = xTimerCreate("FanTimer", pdMS_TO_TICKS(2000), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_FAN_MANUAL_ON, &event_handler, NULL));

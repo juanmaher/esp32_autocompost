@@ -37,6 +37,16 @@ void Crusher_Start() {
 
     crusherOn = false;
 
+
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL<<CRUSHER_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+    gpio_config(&io_conf);
+
     crusherTimer = xTimerCreate("CrusherTimer", pdMS_TO_TICKS(START_CRUSHER_TIMER_MS), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(LOCK_EVENT, LOCK_EVENT_CRUSHER_MANUAL_ON, &event_handler, NULL));

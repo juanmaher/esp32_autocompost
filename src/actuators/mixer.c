@@ -40,6 +40,15 @@ void Mixer_Start() {
 
     mixerOn = false;
 
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL<<MIXER_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+    gpio_config(&io_conf);
+
     rutineMixingTimer = xTimerCreate("rutineMixingTimer", pdMS_TO_TICKS(RUTINE_MIXING_TIMER_MS), pdTRUE, NULL, rutine_mixing_timer_callback);
     startMixerTimer = xTimerCreate("startMixerTimer", pdMS_TO_TICKS(START_MIXER_TIMER_MS), pdTRUE, NULL, start_mixer_timer_callback);
 
