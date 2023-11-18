@@ -44,6 +44,7 @@ void Mixer_Start() {
     startMixerTimer = xTimerCreate("startMixerTimer", pdMS_TO_TICKS(START_MIXER_TIMER_MS), pdTRUE, NULL, start_mixer_timer_callback);
 
     ESP_ERROR_CHECK(esp_event_handler_register(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_MIXER_MANUAL_ON, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(BUTTON_EVENT, BUTTON_EVENT_MIXER_MANUAL_ON, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(PARAMETERS_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(CRUSHER_EVENT, CRUSHER_EVENT_ON, &event_handler, NULL));
 
@@ -56,6 +57,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
     if (strcmp(event_base, COMMUNICATOR_EVENT) == 0) {
         if (event_id == COMMUNICATOR_EVENT_MIXER_MANUAL_ON) {
+            ESP_ERROR_CHECK(turn_on());
+            xTimerStart(startMixerTimer, portMAX_DELAY);
+        }
+    } else if (strcmp(event_base, BUTTON_EVENT) == 0) {
+        if (event_id == BUTTON_EVENT_MIXER_MANUAL_ON) {
             ESP_ERROR_CHECK(turn_on());
             xTimerStart(startMixerTimer, portMAX_DELAY);
         }

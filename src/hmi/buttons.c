@@ -14,6 +14,8 @@
 
 #define DEBUG false
 
+ESP_EVENT_DEFINE_BASE(BUTTON_EVENT);
+
 static const char *TAG = "AC_Buttons";
 
 static button_t crusher_btn, mixer_btn, fan_btn;
@@ -65,7 +67,7 @@ static void on_crusher_button(button_t *btn, button_state_t state) {
     ESP_LOGI(TAG, "Crusher button %s", states[state]);
 
     if (state == BUTTON_PRESSED) {
-        esp_event_post(CRUSHER_EVENT, CRUSHER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(CRUSHER_EVENT, BUTTON_EVENT_CRUSHER_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }
 
@@ -73,7 +75,7 @@ static void on_mixer_button(button_t *btn, button_state_t state) {
     ESP_LOGI(TAG, "Mixer button %s", states[state]);
 
     if (state == BUTTON_PRESSED) {
-        esp_event_post(MIXER_EVENT, MIXER_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(MIXER_EVENT, BUTTON_EVENT_MIXER_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }
 
@@ -81,6 +83,6 @@ static void on_fan_button(button_t *btn, button_state_t state) {
     ESP_LOGI(TAG, "Fan button %s", states[state]);
 
     if (state == BUTTON_PRESSED) {
-        esp_event_post(FAN_EVENT, FAN_EVENT_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(FAN_EVENT, BUTTON_EVENT_FAN_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }
