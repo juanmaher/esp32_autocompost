@@ -16,6 +16,8 @@
 
 #define DEBUG false
 
+#define START_FAN_TIMER_MS          2 * 60 * 1000
+
 ESP_EVENT_DEFINE_BASE(FAN_EVENT);
 
 static const char *TAG = "AC_Fan";
@@ -43,7 +45,7 @@ void Fan_Start() {
     };
     gpio_config(&io_conf);
 
-    fanTimer = xTimerCreate("FanTimer", pdMS_TO_TICKS(2000), pdTRUE, NULL, timer_callback_function);
+    fanTimer = xTimerCreate("FanTimer", pdMS_TO_TICKS(START_FAN_TIMER_MS), pdTRUE, NULL, timer_callback_function);
 
     ESP_ERROR_CHECK(esp_event_handler_register(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_FAN_MANUAL_ON, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(BUTTON_EVENT, BUTTON_EVENT_FAN_MANUAL_ON, &event_handler, NULL));
