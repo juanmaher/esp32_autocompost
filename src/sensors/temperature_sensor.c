@@ -21,6 +21,7 @@ static int sensor_failures = 0;
 static void timer_callback(TimerHandle_t pxTimer);
 static void reader_task(void *pvParameter);
 esp_err_t initialize_onewire_sensor();
+int read_temperature_sensor();
 void reset_temperature_sensor();
 
 static void timer_callback(TimerHandle_t pxTimer) {
@@ -30,54 +31,15 @@ static void timer_callback(TimerHandle_t pxTimer) {
 static void reader_task(void *pvParameter) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
-    esp_err_t err;
     EventBits_t uxBits;
-    float temperature;
+
+    read_temperature_sensor();
 
     while (true) {
         uxBits = xEventGroupWaitBits(sensor.eventGroup, TIMER_EXPIRED_BIT, true, false, portMAX_DELAY);
 
         if (uxBits & TIMER_EXPIRED_BIT) {
-            err = ds18b20_set_resolution(sensor.handle, NULL, DS18B20_RESOLUTION_12B);
-            if (err != ESP_OK) {
-                goto error;
-            }
-
-            err = ds18b20_trigger_temperature_conversion(sensor.handle, NULL);
-            if (err != ESP_OK) {
-                goto error;
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(800));
-
-            err = ds18b20_get_temperature(sensor.handle, sensor.device_rom_id, &temperature);
-            if (err != ESP_OK) {
-                goto error;
-            }
-
-            if (DEBUG) ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
-
-            ComposterParameters_SetTemperature(&composterParameters, temperature);
-
-            if (temperature > MAX_TEMPERATURE) {
-                ComposterParameters_SetTemperatureState(&composterParameters, false);
-                esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_UNSTABLE, NULL, 0, portMAX_DELAY);
-                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(UNSTABLE_HUMIDITY_TIMER_MS), portMAX_DELAY);
-            } else {
-                ComposterParameters_SetTemperatureState(&composterParameters, true);
-                esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_STABLE, NULL, 0, portMAX_DELAY);
-                xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(STABLE_HUMIDITY_TIMER_MS), portMAX_DELAY);
-            }
-
-            continue;
-
-            error:
-                if (err != ESP_OK) {
-                    sensor_failures++;
-                    if (sensor_failures >= 5) {
-                        reset_temperature_sensor();
-                    }
-                }
+            read_temperature_sensor();
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -132,4 +94,54 @@ esp_err_t initialize_onewire_sensor() {
 void reset_temperature_sensor() {
     ESP_ERROR_CHECK(initialize_onewire_sensor());
     sensor_failures = 0;
+}
+
+int read_temperature_sensor() {
+    if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
+
+    esp_err_t err;
+    float temperature;
+
+    err = ds18b20_set_resolution(sensor.handle, NULL, DS18B20_RESOLUTION_12B);
+    if (err != ESP_OK) {
+        goto error;
+    }
+
+    err = ds18b20_trigger_temperature_conversion(sensor.handle, NULL);
+    if (err != ESP_OK) {
+        goto error;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(800));
+
+    err = ds18b20_get_temperature(sensor.handle, sensor.device_rom_id, &temperature);
+    if (err != ESP_OK) {
+        goto error;
+    }
+
+    if (DEBUG) ESP_LOGI(TAG, "Temperature: %.2fC", temperature);
+
+    ComposterParameters_SetTemperature(&composterParameters, temperature);
+
+    if (temperature > MAX_TEMPERATURE) {
+        ComposterParameters_SetTemperatureState(&composterParameters, false);
+        esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_UNSTABLE, NULL, 0, portMAX_DELAY);
+        xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(UNSTABLE_HUMIDITY_TIMER_MS), portMAX_DELAY);
+    } else {
+        ComposterParameters_SetTemperatureState(&composterParameters, true);
+        esp_event_post(TEMPERATURE_EVENT, TEMPERATURE_EVENT_STABLE, NULL, 0, portMAX_DELAY);
+        xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(STABLE_HUMIDITY_TIMER_MS), portMAX_DELAY);
+    }
+
+    return err;
+
+error:
+    if (err != ESP_OK) {
+        sensor_failures++;
+        if (sensor_failures >= 5) {
+            reset_temperature_sensor();
+        }
+    }
+    
+    return err;
 }
