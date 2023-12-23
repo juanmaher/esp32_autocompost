@@ -7,6 +7,7 @@
 #define TIMER_EXPIRED_BIT               (1 << 0)
 #define STABLE_HUMIDITY_TIMER_MS        10 * 60 * 1000
 #define UNSTABLE_HUMIDITY_TIMER_MS      2 * 60 * 1000
+#define ERROR_READ_SENSOR_TIMER_MS      60 * 1000
 #define MAX_HUMIDITY                    60
 
 ESP_EVENT_DEFINE_BASE(HUMIDITY_EVENT);
@@ -70,6 +71,7 @@ int read_humidity_sensor() {
         sensor_failures++;
         if (sensor_failures >= 5) {
             reset_humidity_sensor();
+            xTimerChangePeriod(sensor.stableTimer, pdMS_TO_TICKS(ERROR_READ_SENSOR_TIMER_MS), portMAX_DELAY);
         }
         return ret;
     }
