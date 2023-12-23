@@ -160,8 +160,8 @@ static esp_err_t write_lcd_data(const hd44780_t *lcd, uint8_t data) {
 void lcd_task(void *pvParameters) {
 
     char parameters_msg[DISPLAY_CHAR_COLUMNS];
-    double temperature;
-    double humidity;
+    float temperature;
+    float humidity;
 
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -231,7 +231,7 @@ void lcd_task(void *pvParameters) {
 
             // Formatea la cadena con ambos valores
             // ° es \xdf
-            snprintf(parameters_msg, sizeof(parameters_msg), "t: %.0f C  H: %.0f %%", temperature, humidity);
+            snprintf(parameters_msg, sizeof(parameters_msg), "T: %.0f H: %.0f %%", temperature, humidity);
 
             // Muestra la cadena en la pantalla
             hd44780_gotoxy(&lcd, 0, 1);
