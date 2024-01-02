@@ -70,7 +70,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             unlock();
         }
     } else if (strcmp(event_base, CAPACITY_EVENT) == 0) {
-        if (event_id == CAPACITY_EVENT_EMPTY || event_id == CAPACITY_EVENT_PARTIAL) {
+        if (event_id == CAPACITY_EVENT_NOT_FULL) {
             unlock();
         } else if (event_id == CAPACITY_EVENT_FULL) {
             lock();

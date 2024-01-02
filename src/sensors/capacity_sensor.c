@@ -23,13 +23,12 @@ static CapacitySensor_t sensor;
 extern ComposterParameters composterParameters;
 
 typedef enum {
-    EMPTY = 0,
-    PARTIAL,
+    NOT_FULL = 0,
     FULL,
     STATES
 } capacity_state_t;
 
-static capacity_state_t current_capacity_state = EMPTY;
+static capacity_state_t current_capacity_state = NOT_FULL;
 
 static void timer_callback(TimerHandle_t pxTimer);
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -119,22 +118,16 @@ static void capacity_measurement_task(void *pvParameters) {
 
                 if (capacity_value < MAX_CAPACITY_FLOAT) {
                     current_capacity_state = FULL;
-                } else if (capacity_value > MIN_CAPACITY_FLOAT) {
-                    current_capacity_state = EMPTY;
                 } else {
-                    current_capacity_state = PARTIAL;
+                    current_capacity_state = NOT_FULL;
                 }
 
                 if (prev_capacity_state != current_capacity_state) {
                     prev_capacity_state = current_capacity_state;
                     switch (current_capacity_state) {
-                        case EMPTY:
+                        case NOT_FULL:
                             xTimerStop(sensor.fullTimer, 0);
-                            esp_event_post(CAPACITY_EVENT, CAPACITY_EVENT_EMPTY, NULL, 0, portMAX_DELAY);
-                            break;
-                        case PARTIAL:
-                            xTimerStop(sensor.fullTimer, 0);
-                            esp_event_post(CAPACITY_EVENT, CAPACITY_EVENT_PARTIAL, NULL, 0, portMAX_DELAY);
+                            esp_event_post(CAPACITY_EVENT, CAPACITY_EVENT_NOT_FULL, NULL, 0, portMAX_DELAY);
                             break;
                         case FULL:
                             xTimerStart(sensor.fullTimer, 0);
