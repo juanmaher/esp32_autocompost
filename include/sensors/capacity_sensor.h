@@ -1,6 +1,11 @@
 #ifndef CAPACITYSENSOR_H
 #define CAPACITYSENSOR_H
 
+/**
+ * @file capacity_sensor.h
+ * @brief Declarations for the capacity module.
+ */
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
@@ -28,6 +33,9 @@ typedef struct {
     int timerId;
 } CapacitySensor_t;
 
+/**
+ * @brief Initializes the capacity module.
+ */
 void CapacitySensor_Start();
 
 #endif // CAPACITYSENSOR_H

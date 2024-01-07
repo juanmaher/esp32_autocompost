@@ -1,32 +1,50 @@
+/**
+ * @file composter_parameters.c
+ * @brief Implementation of functions related to composting system parameters.
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 
+// Inclusion of FreeRTOS and ESP-IDF libraries
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 
+// Inclusion of custom header files
 #include "common/composter_parameters.h"
 #include "common/events.h"
 
 #define DEBUG false
 
+// Definition of the event base for parameters
 ESP_EVENT_DEFINE_BASE(PARAMETERS_EVENT);
 
+// Tag to identify log messages
 static const char *TAG = "AC_Parameters";
 
-static bool isCurrentTempertatureStable = true;
+// Variables to track stability of temperature and humidity
+static bool isCurrentTemperatureStable = true;
 static bool isCurrentHumidityStable = true;
 static bool areParametersStable = true;
 
+// Event handler function declaration
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
+/**
+ * @brief Initializes the composting system parameters.
+ *
+ * Initializes the structure with default values and creates a mutex for thread safety.
+ * Registers event handlers for temperature and humidity events.
+ */
 void ComposterParameters_Init(ComposterParameters *params) {
     if (params == NULL) {
         return;
     }
 
+    // Initialization of parameters
     params->complete = 0.0;
     params->days = 0;
     params->humidity = 0.0;
@@ -38,12 +56,21 @@ void ComposterParameters_Init(ComposterParameters *params) {
     params->fan = false;
     params->lock = false;
     params->lid = false;
+
+    // Creation of mutex for thread safety
     params->mutex = xSemaphoreCreateMutex();
 
+    // Registration of event handlers for temperature and humidity events
     ESP_ERROR_CHECK(esp_event_handler_register(TEMPERATURE_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(HUMIDITY_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 }
 
+/**
+ * @brief Event handler for temperature and humidity events.
+ *
+ * Handles events related to temperature and humidity stability changes.
+ * Updates the overall parameter stability and generates events accordingly.
+ */
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %ld", event_base, event_id);
@@ -51,10 +78,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     if (strcmp(event_base, TEMPERATURE_EVENT) == 0) {
         if (event_id == TEMPERATURE_EVENT_STABLE) {
             if (DEBUG) ESP_LOGI(TAG, "Temperature stable event received");
-            isCurrentTempertatureStable = true;
+            isCurrentTemperatureStable = true;
         } else if (event_id == TEMPERATURE_EVENT_UNSTABLE) {
             if (DEBUG) ESP_LOGI(TAG, "Temperature unstable event received");
-            isCurrentTempertatureStable = false;
+            isCurrentTemperatureStable = false;
         }
     } else if (strcmp(event_base, HUMIDITY_EVENT) == 0) {
         if (event_id == HUMIDITY_EVENT_STABLE) {
@@ -66,14 +93,17 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         }
     }
 
-    if (isCurrentTempertatureStable && isCurrentHumidityStable && !areParametersStable) {
+    // Check if both temperature and humidity are stable and update overall stability
+    if (isCurrentTemperatureStable && isCurrentHumidityStable && !areParametersStable) {
         areParametersStable = true;
         esp_event_post(PARAMETERS_EVENT, PARAMETERS_EVENT_STABLE, NULL, 0, portMAX_DELAY);
-    } else if ((!isCurrentTempertatureStable || !isCurrentHumidityStable) && areParametersStable) {
+    } else if ((!isCurrentTemperatureStable || !isCurrentHumidityStable) && areParametersStable) {
         areParametersStable = false;
         esp_event_post(PARAMETERS_EVENT, PARAMETERS_EVENT_UNSTABLE, NULL, 0, portMAX_DELAY);
     }
 }
+
+// Function implementations for getting parameters
 
 double ComposterParameters_GetComplete(const ComposterParameters* params) {
     double result = 0.0;
@@ -239,6 +269,8 @@ bool ComposterParameters_GetLidState(const ComposterParameters* params) {
 
     return result;
 }
+
+// Function implementations for setting parameters
 
 void ComposterParameters_SetComplete(ComposterParameters* params, double value) {
     if (params == NULL || params->mutex == NULL) {

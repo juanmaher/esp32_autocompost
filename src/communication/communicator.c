@@ -1,3 +1,7 @@
+/**
+ * @file communicator.c
+ * @brief Implementation of the communicator module for handling communication with Firebase.
+ */
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -48,6 +52,11 @@ static cJSON * create_firebase_composter();
 static esp_err_t update_sensors_parameters_values();
 static void configure_firebase_connection();
 
+/**
+ * @brief Start the Communicator module.
+ *
+ * Initialize event handlers, tasks, and timers for communication.
+ */
 void Communicator_Start() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -66,6 +75,11 @@ void Communicator_Start() {
     fan_current_state = ComposterParameters_GetFanState(&composterParameters);
 }
 
+/**
+ * @brief Get the current data of the composter from Firebase.
+ *
+ * @return cJSON object containing the composter data.
+ */
 static cJSON * get_firebase_composter_data() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -79,6 +93,11 @@ static cJSON * get_firebase_composter_data() {
     return data_json;
 }
 
+/**
+ * @brief Create default composter data on Firebase.
+ *
+ * @return cJSON object representing the default composter data.
+ */
 static cJSON * create_firebase_composter() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -98,6 +117,11 @@ static cJSON * create_firebase_composter() {
     return data_json;
 }
 
+/**
+ * @brief Update the values of sensors parameters in Firebase.
+ *
+ * @return ESP_OK on success, ESP_FAIL on failure.
+ */
 static esp_err_t update_sensors_parameters_values() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -136,6 +160,9 @@ static esp_err_t update_sensors_parameters_values() {
     return ESP_OK;
 }
 
+/**
+ * @brief Configure the Firebase connection with user credentials.
+ */
 static void configure_firebase_connection() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -175,6 +202,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
+/**
+ * @brief Timer callback function for periodic communication with Firebase.
+ */
 static void timer_callback_function(TimerHandle_t xTimer) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -183,36 +213,52 @@ static void timer_callback_function(TimerHandle_t xTimer) {
     }
 }
 
+/**
+ * @brief Task to handle the periodic connection status check.
+ *
+ * This task monitors the Wi-Fi connection state and initiates or terminates the communication
+ * timer accordingly. It also establishes or closes the connection to Firebase based on the Wi-Fi state.
+ *
+ * @param param Pointer to additional data (not used).
+ */
 static void connection_task(void* param) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
+    // Variables to track event bits and previous event bits
     EventBits_t uxBits;
     EventBits_t prevBits = xEventGroupGetBits(s_communication_event_group);
 
+    // Flag to identify the first connection attempt
     bool first_connection = true;
 
     while (true) {
-
         UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
         if (DEBUG) ESP_LOGD(TAG, "Connection Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
+        // Retrieve the current event bits
         uxBits = xEventGroupGetBits(s_communication_event_group);
 
+        // Check if there is a change in event bits
         if (uxBits != prevBits) {
-
+            // Check Wi-Fi connection state
             if ((uxBits & CONNECTION_STATE_BIT) != (prevBits & CONNECTION_STATE_BIT)) {
                 ESP_LOGI(TAG, "Wi-Fi connection state has changed");
 
+                // Wi-Fi is connected
                 if (uxBits & CONNECTION_STATE_BIT) {
                     ESP_LOGI(TAG, "Wi-Fi connection active");
                     wifi_connected = true;
+
+                    // Create the communicator timer on the first connection
                     if (first_connection) {
                         first_connection = false;
                         communicatorTimer = xTimerCreate("CommunicatorTimer", pdMS_TO_TICKS(RUTINE_COMMUNICATOR_TIMER_MS), pdTRUE, NULL, timer_callback_function);
                     }
                     configure_firebase_connection();
                     xTimerStart(communicatorTimer, portMAX_DELAY);
-                } else {
+                }
+                // Wi-Fi is disconnected
+                else {
                     ESP_LOGI(TAG, "Wi-Fi connection inactive");
                     wifi_connected = false;
                     firebase_active_session = false;
@@ -220,50 +266,66 @@ static void connection_task(void* param) {
                 }
             }
 
+            // Update previous event bits
             prevBits = uxBits;
         }
-
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
     vTaskDelete(NULL);
 }
 
+
+/**
+ * @brief Task to read changes from Firebase and trigger corresponding events.
+ *
+ * This task continuously monitors changes in the Firebase database related to mixer, crusher, and fan states.
+ * When changes are detected, it generates corresponding events to handle manual control actions.
+ *
+ * @param param Pointer to additional data (not used).
+ */
 static void reading_changes_task(void* param) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
     while (true) {
-
+        // Check if Wi-Fi is connected and there is an active Firebase session
         if (wifi_connected && firebase_active_session) {
-
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
             if (DEBUG) ESP_LOGD(TAG, "Reading Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
+            // Retrieve the Firebase data
             cJSON* data_json = get_firebase_composter_data();
             cJSON* mixerField = cJSON_GetObjectItem(data_json, "mezcladora");
             cJSON* crusherField = cJSON_GetObjectItem(data_json, "trituradora");
             cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
 
+            // Check if the necessary fields exist and are of boolean type
             if (cJSON_IsBool(mixerField) && cJSON_IsBool(crusherField) && cJSON_IsBool(fanField)) {
+                // Extract the boolean values
                 bool mixer = cJSON_IsTrue(mixerField);
                 bool crusher = cJSON_IsTrue(crusherField);
                 bool fan = cJSON_IsTrue(fanField);
 
+                // Check for changes in the mixer state
                 if (mixer != mixer_current_state) {
+                    // If mixer is turned on, generate a manual mixer start event
                     if (mixer) {
                         ESP_LOGI(TAG, "Manual mixer start detected");
                         esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_MIXER_MANUAL_ON, NULL, 0, portMAX_DELAY);
                     }
                 }
 
+                // Check for changes in the crusher state
                 if (crusher != crusher_current_state) {
+                    // If crusher is turned on, generate a manual crusher start event
                     if (crusher) {
                         ESP_LOGI(TAG, "Manual crusher start detected");
                         esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_CRUSHER_MANUAL_ON, NULL, 0, portMAX_DELAY);
                     }
                 }
 
+                // Check for changes in the fan state
                 if (fan != fan_current_state) {
+                    // If fan is turned on, generate a manual fan start event
                     if (fan) {
                         ESP_LOGI(TAG, "Manual fan start detected");
                         esp_event_post(COMMUNICATOR_EVENT, COMMUNICATOR_EVENT_FAN_MANUAL_ON, NULL, 0, portMAX_DELAY);
@@ -274,53 +336,68 @@ static void reading_changes_task(void* param) {
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
     vTaskDelete(NULL);
 }
 
+/**
+ * @brief Task to write changes to Firebase based on local events.
+ *
+ * This task monitors local events related to mixer, crusher, and fan states and updates the corresponding data
+ * in the Firebase database when changes are detected. It utilizes patch requests to minimize data transmission.
+ *
+ * @param param Pointer to additional data (not used).
+ */
 static void writing_changes_task(void* param) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
+    // Variables to track event bits and previous event bits
     EventBits_t uxBits;
     EventBits_t prevBits = xEventGroupGetBits(s_communication_event_group);
 
     while (true) {
-
+        // Check if Wi-Fi is connected and there is an active Firebase session
         if (wifi_connected && firebase_active_session) {
-
             UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
             if (DEBUG) ESP_LOGD(TAG, "Writing Task Stack High Water Mark: %u bytes", stackHighWaterMark * sizeof(StackType_t));
 
+            // Retrieve the current event bits
             uxBits = xEventGroupGetBits(s_communication_event_group);
             if (uxBits != prevBits) {
+                // Retrieve the current Firebase data
                 cJSON* data_json = get_firebase_composter_data();
 
+                // Check for changes in the mixer state
                 if ((uxBits & MIXER_STATE_BIT) != (prevBits & MIXER_STATE_BIT)) {
-                    ESP_LOGI(TAG, "Se detecto cambio estado de la mezcladora");
+                    ESP_LOGI(TAG, "Mixer state change detected");
                     cJSON* mixerField = cJSON_GetObjectItem(data_json, "mezcladora");
                     if (cJSON_IsBool(mixerField)) {
                         cJSON_ReplaceItemInObject(data_json, "mezcladora", cJSON_CreateBool(uxBits & MIXER_STATE_BIT ? true : false));
                     }
+                    // Perform a patch request to update the Firebase data
                     db->patchDataJson(db, firebase_path, data_json);
                     mixer_current_state = uxBits & MIXER_STATE_BIT ? true : false;
                 }
 
+                // Check for changes in the crusher state
                 if ((uxBits & CRUSHER_STATE_BIT) != (prevBits & CRUSHER_STATE_BIT)) {
-                    ESP_LOGI(TAG, "Se detecto cambio estado de la trituradora");
+                    ESP_LOGI(TAG, "Crusher state change detected");
                     cJSON* crusherField = cJSON_GetObjectItem(data_json, "trituradora");
                     if (cJSON_IsBool(crusherField)) {
                         cJSON_ReplaceItemInObject(data_json, "trituradora", cJSON_CreateBool(uxBits & CRUSHER_STATE_BIT ? true : false));
                     }
+                    // Perform a patch request to update the Firebase data
                     db->patchDataJson(db, firebase_path, data_json);
                     crusher_current_state = uxBits & CRUSHER_STATE_BIT ? true : false;
                 }
 
+                // Check for changes in the fan state
                 if ((uxBits & FAN_STATE_BIT) != (prevBits & FAN_STATE_BIT)) {
-                    ESP_LOGI(TAG, "Se detecto cambio estado del ventilador");
+                    ESP_LOGI(TAG, "Fan state change detected");
                     cJSON* fanField = cJSON_GetObjectItem(data_json, "fan");
                     if (cJSON_IsBool(fanField)) {
                         cJSON_ReplaceItemInObject(data_json, "fan", cJSON_CreateBool(uxBits & FAN_STATE_BIT ? true : false));
                     }
+                    // Perform a patch request to update the Firebase data
                     db->patchDataJson(db, firebase_path, data_json);
                     fan_current_state = uxBits & FAN_STATE_BIT ? true : false;
                 }
@@ -331,6 +408,5 @@ static void writing_changes_task(void* param) {
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
     vTaskDelete(NULL);
 }

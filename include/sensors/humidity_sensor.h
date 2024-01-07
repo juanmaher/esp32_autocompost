@@ -1,6 +1,11 @@
 #ifndef HUMIDITYSENSOR_H
 #define HUMIDITYSENSOR_H
 
+/**
+ * @file humidity_sensor.h
+ * @brief Declarations for the humidity sensor module.
+ */
+
 /* FreeRTOS includes */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,6 +28,10 @@ typedef struct {
     int timerId;
 } HumiditySensor_t;
 
+/**
+ * @brief Initializes the humidity sensor module.
+ * 
+ */
 void HumiditySensor_Start();
 
 #endif // HUMIDITYSENSOR_H

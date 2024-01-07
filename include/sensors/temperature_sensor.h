@@ -1,6 +1,11 @@
 #ifndef TEMPERATURESENSOR_H
 #define TEMPERATURESENSOR_H
 
+/**
+ * @file temperature_sensor.h
+ * @brief Declarations for the temperature sensor module.
+ */
+
 /* FreeRTOS includes */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -25,6 +30,9 @@ typedef struct {
     uint8_t device_rom_id[8];
 } TemperatureSensor_t;
 
+/**
+ * @brief Initializes the temperature sensor module.
+ */
 void TemperatureSensor_Start();
 
 #endif // TEMPERATURESENSOR_H

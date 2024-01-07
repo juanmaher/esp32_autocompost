@@ -1,6 +1,10 @@
 #ifndef GPIOS_H
 #define GPIOS_H
 
+/**
+ * @file gpios.h
+ * @brief Declaration of the GPIOs used in the project
+ */
 #define HIGH_LEVEL                  1
 #define LOW_LEVEL                   0
 

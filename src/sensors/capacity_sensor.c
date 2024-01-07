@@ -1,3 +1,7 @@
+/**
+ * @file capacity_sensor.c
+ * @brief Implementation of the capacity sensor module.
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -22,6 +26,9 @@ const static char *TAG = "AC_CapacitySensor";
 static CapacitySensor_t sensor;
 extern ComposterParameters composterParameters;
 
+/**
+ * @brief Enumeration representing different capacity states.
+ */
 typedef enum {
     NOT_FULL = 0,
     FULL,
@@ -54,6 +61,13 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
+/**
+ * @brief Ultrasonic sensor echo callback implementation.
+ * @param cap_chan The MCPWM capture channel handle.
+ * @param edata Data related to the capture event.
+ * @param user_data User data (task handle to notify).
+ * @return Whether the task should be woken up.
+ */
 static bool hc_sr04_echo_callback(mcpwm_cap_channel_handle_t cap_chan, const mcpwm_capture_event_data_t *edata, void *user_data) {
     static uint32_t cap_val_begin_of_sample = 0;
     static uint32_t cap_val_end_of_sample = 0;
@@ -77,12 +91,19 @@ static bool hc_sr04_echo_callback(mcpwm_cap_channel_handle_t cap_chan, const mcp
     return high_task_wakeup == pdTRUE;
 }
 
+/**
+ * @brief Generates a trigger output for the ultrasonic sensor.
+ */
 static void gen_trig_output(void) {
     gpio_set_level(SENSOR_TRIG_GPIO, HIGH_LEVEL);
     esp_rom_delay_us(10);
     gpio_set_level(SENSOR_TRIG_GPIO, LOW_LEVEL);
 }
 
+/**
+ * @brief Task for capacity measurement.
+ * @param pvParameters Task parameters (unused).
+ */
 static void capacity_measurement_task(void *pvParameters) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -90,38 +111,52 @@ static void capacity_measurement_task(void *pvParameters) {
     capacity_state_t prev_capacity_state = current_capacity_state;
     float capacity_value;
 
+    // Register the callback function for the ultrasonic sensor's echo signal
     if (DEBUG) ESP_LOGI(TAG, "Register capture callback");
     sensor.task_to_notify = xTaskGetCurrentTaskHandle();
     sensor.cbs.on_cap = hc_sr04_echo_callback;
     ESP_ERROR_CHECK(mcpwm_capture_channel_register_event_callbacks(sensor.cap_chan, &sensor.cbs, sensor.task_to_notify));
 
+    // Enable the capture channel for the ultrasonic sensor
     if (DEBUG) ESP_LOGI(TAG, "Enable capture channel");
     ESP_ERROR_CHECK(mcpwm_capture_channel_enable(sensor.cap_chan));
 
+    // Enable and start the capture timer for the ultrasonic sensor
     if (DEBUG) ESP_LOGI(TAG, "Enable and start capture timer");
     ESP_ERROR_CHECK(mcpwm_capture_timer_enable(sensor.cap_timer));
     ESP_ERROR_CHECK(mcpwm_capture_timer_start(sensor.cap_timer));
 
     uint32_t tof_ticks;
     while (true) {
+        // Wait for events related to timer expiration or mixer being turned off
         uxBits = xEventGroupWaitBits(sensor.eventGroup, TIMER_EXPIRED_BIT | MIXER_OFF_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
 
         if (uxBits & TIMER_EXPIRED_BIT || uxBits & MIXER_OFF_BIT) {
+            // Generate a trigger output for the ultrasonic sensor
             gen_trig_output();
+
+            // Wait for notification from the ultrasonic sensor's echo callback
             if (xTaskNotifyWait(0x00, ULONG_MAX, &tof_ticks, pdMS_TO_TICKS(1000)) == pdTRUE) {
+                // Calculate pulse width in microseconds from time-of-flight ticks
                 float pulse_width_us = tof_ticks * (1000000.0 / esp_clk_apb_freq());
+
+                // Check if pulse width is within a valid range
                 if (pulse_width_us > 35000) {
                     continue;
                 }
-                capacity_value = (float)pulse_width_us / 58; // Modificar para calcular el valor de la capacidad
+
+                // Calculate capacity value based on pulse width (modify for actual capacity calculation)
+                capacity_value = (float)pulse_width_us / 58;
                 if (DEBUG) ESP_LOGI(TAG, "Measured capacity: %.2f", capacity_value);
 
+                // Determine the capacity state based on the measured value
                 if (capacity_value < MAX_CAPACITY_FLOAT) {
                     current_capacity_state = FULL;
                 } else {
                     current_capacity_state = NOT_FULL;
                 }
 
+                // Handle state changes and trigger events accordingly
                 if (prev_capacity_state != current_capacity_state) {
                     prev_capacity_state = current_capacity_state;
                     switch (current_capacity_state) {
@@ -138,8 +173,8 @@ static void capacity_measurement_task(void *pvParameters) {
                     }
                 }
 
+                // Calculate percentage and update ComposterParameters
                 float percentage = 100 * capacity_value / 32;
-
                 if (percentage < 0) {
                     percentage = 0;
                 } else if (percentage > 100) {
@@ -153,6 +188,9 @@ static void capacity_measurement_task(void *pvParameters) {
     }
 }
 
+/**
+ * @brief Initializes and starts the capacity sensor.
+ */
 void CapacitySensor_Start() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 

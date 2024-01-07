@@ -1,3 +1,11 @@
+/**
+ * @file display.c
+ * @brief Module for managing the LCD display and handling display-related events.
+ *
+ * This module includes functions to initialize and manage the LCD display, as well as handle events that trigger
+ * changes in the display content.
+ */
+
 #include <stdio.h>
 #include <string.h>
 
@@ -20,6 +28,7 @@
 
 static const char *TAG = "AC_Display";
 
+// Strings for different display messages
 static char main_msg[] = "AutoCompost";
 static char welcome_msg[] = "Welcome AutoComposter!";
 static char wifi_connected_msg[] = "Wi-Fi connected";
@@ -42,10 +51,13 @@ static char new_message[DISPLAY_CHAR_ROWS][DISPLAY_CHAR_COLUMNS];
 static i2c_dev_t pcf8574;
 
 static esp_err_t write_lcd_data(const hd44780_t *lcd, uint8_t data);
-static void split_message(const char* input, char* line1, char* line2);
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+static void split_message(const char *input, char *line1, char *line2);
+static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 void lcd_task(void *pvParameters);
 
+/**
+ * @brief Function to start the display module.
+ */
 void Display_Start() {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
 
@@ -72,11 +84,19 @@ void Display_Start() {
 #endif
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data) {
+/**
+ * @brief Event handler function for various events that trigger changes in the display content.
+ *
+ * @param arg         Unused parameter.
+ * @param event_base  Event base of the received event.
+ * @param event_id    Event ID of the received event.
+ * @param event_data  Data associated with the received event.
+ */
+static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (DEBUG) ESP_LOGI(TAG, "on %s", __func__);
     ESP_LOGI(TAG, "Event received: %s, %ld", event_base, event_id);
 
+    // Handle different events and set corresponding messages for display
     if (strcmp(event_base, WIFI_EVENT_INTERNAL) == 0) {
         if (event_id == WIFI_EVENT_CONNECTION_ON) {
             split_message(wifi_connected_msg, new_message[0], new_message[1]);
@@ -116,22 +136,28 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     event_received = true;
 }
 
-static void split_message(const char* input, char* line1, char* line2) {
+/**
+ * @brief Function to split a message into two lines to fit the display.
+ *
+ * @param input  Input message to split.
+ * @param line1  Output buffer for the first line.
+ * @param line2  Output buffer for the second line.
+ */
+static void split_message(const char *input, char *line1, char *line2) {
     int length = strlen(input);
     if (length <= DISPLAY_CHAR_COLUMNS) {
-        // El mensaje cabe en una fila
+        // The message fits in one line
         strcpy(line1, input);
-        line2[0] = '\0';  // La segunda fila está vacía
+        line2[0] = '\0';  // The second line is empty
     } else {
         int split_pos = DISPLAY_CHAR_COLUMNS;
         if (input[split_pos] != ' ') {
-            // Buscar la posición del último espacio antes de DISPLAY_CHAR_COLUMNS
+            // Find the position of the last space before DISPLAY_CHAR_COLUMNS
             while (split_pos > 0 && input[split_pos] != ' ') {
                 split_pos--;
             }
             if (split_pos == 0) {
-                // No se encontró un espacio antes de DISPLAY_CHAR_COLUMNS,
-                // así que cortamos en DISPLAY_CHAR_COLUMNS
+                // No space found before DISPLAY_CHAR_COLUMNS, so cut at DISPLAY_CHAR_COLUMNS
                 split_pos = DISPLAY_CHAR_COLUMNS;
             }
         }
@@ -139,26 +165,37 @@ static void split_message(const char* input, char* line1, char* line2) {
         strncpy(line1, input, split_pos);
         line1[split_pos] = '\0';
 
-        // Avanzar al primer carácter no procesado
+        // Move to the first unprocessed character
         while (input[split_pos] == ' ') {
             split_pos++;
         }
 
         strcpy(line2, input + split_pos);
 
-        // Asegurarse de que la segunda línea no exceda DISPLAY_CHAR_COLUMNS
+        // Ensure the second line does not exceed DISPLAY_CHAR_COLUMNS
         if (strlen(line2) > DISPLAY_CHAR_COLUMNS) {
             line2[DISPLAY_CHAR_COLUMNS] = '\0';
         }
     }
 }
 
+/**
+ * @brief Callback function to write data to the LCD.
+ *
+ * @param lcd   Pointer to the LCD descriptor.
+ * @param data  Data to write to the LCD.
+ * @return ESP_OK on success, otherwise an error code.
+ */
 static esp_err_t write_lcd_data(const hd44780_t *lcd, uint8_t data) {
     return pcf8574_port_write(&pcf8574, data);
 }
 
+/**
+ * @brief Task to manage the LCD display.
+ *
+ * @param pvParameters  Unused parameter.
+ */
 void lcd_task(void *pvParameters) {
-
     char parameters_msg[DISPLAY_CHAR_COLUMNS];
     float temperature;
     float humidity;
@@ -196,13 +233,12 @@ void lcd_task(void *pvParameters) {
     hd44780_gotoxy(&lcd, 0, 1);
     hd44780_puts(&lcd, new_message[1]);
 
-    TickType_t event_start_time = 1; // Hora de inicio de visualización del mensaje de evento
+    TickType_t event_start_time = 1; // Start time of displaying the event message
 
     while (true) {
-
-        // Verificar si ha llegado un evento y configurar el mensaje de evento si es necesario
+        // Check if an event has arrived and set the event message if necessary
         if (event_received) {
-            event_received = false; // Restablecer el estado del evento
+            event_received = false; // Reset event state
             hd44780_clear(&lcd);
             if (strlen(new_message[0])) {
                 hd44780_gotoxy(&lcd, 0, 0);
@@ -214,30 +250,30 @@ void lcd_task(void *pvParameters) {
                 hd44780_puts(&lcd, new_message[1]);
                 if (DEBUG) ESP_LOGI(TAG, "on %s: new msg[1]: %s", __func__, new_message[1]);
             }
-            event_start_time = xTaskGetTickCount(); // Registrar la hora de inicio de la visualización del mensaje de evento
+            event_start_time = xTaskGetTickCount(); // Record the start time of displaying the event message
         }
 
         if (xTaskGetTickCount() >= event_start_time + pdMS_TO_TICKS(5000)) {
             if (event_start_time) {
-                event_start_time = 0; // Restablecer la hora de inicio
+                event_start_time = 0; // Reset the start time
                 hd44780_clear(&lcd);
             }
             hd44780_gotoxy(&lcd, 0, 0);
             hd44780_puts(&lcd, main_msg);
 
-            // Obtiene los valores de temperatura y humedad
+            // Get temperature and humidity values
             temperature = ComposterParameters_GetTemperature(&composterParameters);
             humidity = ComposterParameters_GetHumidity(&composterParameters);
 
-            // Formatea la cadena con ambos valores
-            // ° es \xdf
+            // Format the string with both values
+            // ° is \xdf
             snprintf(parameters_msg, sizeof(parameters_msg), "T: %.0f H: %.0f %%", temperature, humidity);
 
-            // Muestra la cadena en la pantalla
+            // Display the string on the screen
             hd44780_gotoxy(&lcd, 0, 1);
             hd44780_puts(&lcd, parameters_msg);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Actualizar la pantalla cada 100 ms
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Update the display every 1000 ms
     }
 }

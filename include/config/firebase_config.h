@@ -1,6 +1,11 @@
 #ifndef FIREBASE_CONFIG_H
 #define FIREBASE_CONFIG_H
 
+/**
+ * @file firebase_config.h
+ * @brief Declarations for the FirebaseConfig module.
+ */
+
 // Wifi Credentials
 #define SSID "SSID"
 #define PASSWORD "PASSWORD"
