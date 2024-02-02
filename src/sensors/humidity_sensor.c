@@ -6,7 +6,7 @@
 #include "common/events.h"
 #include "sensors/humidity_sensor.h"
 
-#define DEBUG true
+#define DEBUG false
 
 #define TIMER_EXPIRED_BIT               (1 << 0)
 #define STABLE_HUMIDITY_TIMER_MS        10 * 60 * 1000

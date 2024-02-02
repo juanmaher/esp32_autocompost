@@ -10,7 +10,7 @@
 #include "common/events.h"
 #include "sensors/capacity_sensor.h"
 
-#define DEBUG true
+#define DEBUG false
 
 #define TIMER_EXPIRED_BIT           BIT0
 #define MIXER_OFF_BIT               BIT1

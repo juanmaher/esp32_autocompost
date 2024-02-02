@@ -6,7 +6,7 @@
 #include "common/events.h"
 #include "sensors/temperature_sensor.h"
 
-#define DEBUG true
+#define DEBUG false
 
 ESP_EVENT_DEFINE_BASE(TEMPERATURE_EVENT);
 

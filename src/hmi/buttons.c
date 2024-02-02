@@ -85,7 +85,7 @@ static void on_crusher_button(button_t *btn, button_state_t state) {
 
     // Post event when the crusher button is pressed
     if (state == BUTTON_PRESSED) {
-        esp_event_post(CRUSHER_EVENT, BUTTON_EVENT_CRUSHER_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(BUTTON_EVENT, BUTTON_EVENT_CRUSHER_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }
 
@@ -100,7 +100,7 @@ static void on_mixer_button(button_t *btn, button_state_t state) {
 
     // Post event when the mixer button is pressed
     if (state == BUTTON_PRESSED) {
-        esp_event_post(MIXER_EVENT, BUTTON_EVENT_MIXER_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(BUTTON_EVENT, BUTTON_EVENT_MIXER_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }
 
@@ -115,6 +115,6 @@ static void on_fan_button(button_t *btn, button_state_t state) {
 
     // Post event when the fan button is pressed
     if (state == BUTTON_PRESSED) {
-        esp_event_post(FAN_EVENT, BUTTON_EVENT_FAN_MANUAL_ON, NULL, 0, portMAX_DELAY);
+        esp_event_post(BUTTON_EVENT, BUTTON_EVENT_FAN_MANUAL_ON, NULL, 0, portMAX_DELAY);
     }
 }

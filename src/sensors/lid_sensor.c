@@ -66,11 +66,13 @@ static void lid_sensor_task(void* arg) {
                 current_gpio_state = gpio_get_level(io_num);
                 if (DEBUG) printf("%s: GPIO[%"PRIu32"] intr, val: %d\n", TAG, io_num, gpio_get_level(io_num));
                 if (gpio_get_level(io_num)) {
-                    ComposterParameters_SetLidState(&composterParameters, true);
+                    if (DEBUG) printf("LID OPENED\n");
+                    ComposterParameters_SetLidState(&composterParameters, false);
                     ESP_ERROR_CHECK(esp_event_post(LID_EVENT, LID_EVENT_OPENED, NULL, 0, portMAX_DELAY));
                     xTimerStart(lidTimer, portMAX_DELAY);
                 } else {
-                    ComposterParameters_SetLidState(&composterParameters, false);
+                    if (DEBUG) printf("LID CLOSED\n");
+                    ComposterParameters_SetLidState(&composterParameters, true);
                     ESP_ERROR_CHECK(esp_event_post(LID_EVENT, LID_EVENT_CLOSED, NULL, 0, portMAX_DELAY));
                     xTimerStop(lidTimer, portMAX_DELAY);
                 }
